@@ -1,33 +1,30 @@
 import { useEffect, useState } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { getToken } from '../lib/auth';
-import { useRouter, useSegments } from 'expo-router';
 
 export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const router = useRouter();
   const segments = useSegments();
 
   useEffect(() => {
-    checkAuth();
+    setIsReady(true);
   }, []);
 
   useEffect(() => {
     if (!isReady) return;
+    checkAndRedirect();
+  }, [isReady, segments]);
+
+  async function checkAndRedirect() {
+    const token = await getToken();
     const inAuth = segments[0] === '(auth)';
-    if (!isLoggedIn && !inAuth) {
+    if (!token && !inAuth) {
       router.replace('/(auth)/login');
-    } else if (isLoggedIn && inAuth) {
+    } else if (token && inAuth) {
       router.replace('/(tabs)');
     }
-  }, [isLoggedIn, isReady, segments]);
-
-  async function checkAuth() {
-    const token = await getToken();
-    setIsLoggedIn(!!token);
-    setIsReady(true);
   }
 
   if (!isReady) return null;

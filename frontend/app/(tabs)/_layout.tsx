@@ -1,23 +1,43 @@
 import { Tabs } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarStyle: { backgroundColor: '#16213e', borderTopColor: '#0f3460' },
-        tabBarActiveTintColor: '#e94560',
-        tabBarInactiveTintColor: '#a8a8b3',
-        headerStyle: { backgroundColor: '#1a1a2e' },
+        tabBarStyle: {
+          backgroundColor: '#0D0D1A',
+          borderTopColor: '#1C1C2E',
+          borderTopWidth: 1,
+          height: 60,
+          paddingBottom: 8,
+        },
+        tabBarActiveTintColor: '#E5534B',
+        tabBarInactiveTintColor: '#4B5563',
+        headerStyle: { backgroundColor: '#0A0A1A' },
         headerTintColor: '#fff',
+        headerTitleStyle: { fontWeight: 'bold' },
       }}
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'Παραστάσεις', tabBarLabel: 'Αρχική' }}
+        options={{
+          title: 'Παραστάσεις',
+          tabBarLabel: 'Αρχική',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="film-outline" size={size} color={color} />
+          ),
+        }}
       />
       <Tabs.Screen
         name="profile"
-        options={{ title: 'Προφίλ', tabBarLabel: 'Προφίλ' }}
+        options={{
+          title: 'Προφίλ',
+          tabBarLabel: 'Κρατήσεις',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="ticket-outline" size={size} color={color} />
+          ),
+        }}
       />
     </Tabs>
   );

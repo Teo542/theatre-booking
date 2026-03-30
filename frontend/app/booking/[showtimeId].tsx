@@ -4,6 +4,7 @@ import {
   ActivityIndicator, Alert, ScrollView,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import api from '../../lib/api';
 
 type Category = {
@@ -11,66 +12,125 @@ type Category = {
   name: string;
   price: string;
   available_seats: number;
+  total_seats: number;
 };
 
-type Selection = { [categoryId: number]: number };
+type SeatState = 'available' | 'selected' | 'taken';
+
+type Seat = {
+  id: string;
+  row: string;
+  col: number;
+  state: SeatState;
+  categoryId: number;
+};
+
+const ROWS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+const COLS = 12;
+const AISLE_AFTER = 5;
+
+function buildSeatMap(categories: Category[]): Seat[][] {
+  const rowsPerCat: Record<number, string[]> = {};
+  let rowIdx = 0;
+  for (const cat of categories) {
+    const needed = Math.ceil(cat.total_seats / COLS);
+    rowsPerCat[cat.category_id] = ROWS.slice(rowIdx, rowIdx + needed);
+    rowIdx += needed;
+  }
+
+  return categories.flatMap((cat) => {
+    const takenSeats = cat.total_seats - cat.available_seats;
+    let filledCount = 0;
+    return (rowsPerCat[cat.category_id] || []).map((row) => {
+      return Array.from({ length: COLS }, (_, col) => {
+        filledCount++;
+        return {
+          id: `${row}${col + 1}`,
+          row,
+          col: col + 1,
+          state: filledCount <= takenSeats ? 'taken' : 'available',
+          categoryId: cat.category_id,
+        } as Seat;
+      });
+    });
+  });
+}
 
 export default function BookingScreen() {
   const { showtimeId } = useLocalSearchParams<{ showtimeId: string }>();
   const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
-  const [selection, setSelection] = useState<Selection>({});
+  const [seatMap, setSeatMap] = useState<Seat[][]>([]);
+  const [selected, setSelected] = useState<Seat[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    loadCategories();
-  }, [showtimeId]);
+  useEffect(() => { loadCategories(); }, [showtimeId]);
 
   async function loadCategories() {
     try {
       const { data } = await api.get('/seats', { params: { showtimeId } });
       setCategories(data);
-    } catch (err) {
+      setSeatMap(buildSeatMap(data));
+    } catch {
       Alert.alert('Σφάλμα', 'Αδυναμία φόρτωσης θέσεων');
     } finally {
       setLoading(false);
     }
   }
 
-  function changeQty(categoryId: number, delta: number, max: number) {
-    setSelection((prev) => {
-      const current = prev[categoryId] || 0;
-      const next = Math.max(0, Math.min(max, current + delta));
-      return { ...prev, [categoryId]: next };
+  function toggleSeat(seat: Seat) {
+    if (seat.state === 'taken') return;
+    setSeatMap((prev) =>
+      prev.map((row) =>
+        row.map((s) => {
+          if (s.id !== seat.id) return s;
+          return { ...s, state: s.state === 'selected' ? 'available' : 'selected' };
+        })
+      )
+    );
+    setSelected((prev) => {
+      const exists = prev.find((s) => s.id === seat.id);
+      return exists ? prev.filter((s) => s.id !== seat.id) : [...prev, seat];
     });
   }
 
   function calcTotal() {
-    return categories.reduce((sum, cat) => {
-      const qty = selection[cat.category_id] || 0;
-      return sum + qty * parseFloat(cat.price);
+    return selected.reduce((sum, s) => {
+      const cat = categories.find((c) => c.category_id === s.categoryId);
+      return sum + (cat ? parseFloat(cat.price) : 0);
     }, 0).toFixed(2);
   }
 
-  function hasSelection() {
-    return Object.values(selection).some((q) => q > 0);
+  function getCategoryForRow(row: string): Category | undefined {
+    let rowIdx = 0;
+    for (const cat of categories) {
+      const needed = Math.ceil(cat.total_seats / COLS);
+      const catRows = ROWS.slice(rowIdx, rowIdx + needed);
+      if (catRows.includes(row)) return cat;
+      rowIdx += needed;
+    }
   }
 
   async function handleBook() {
-    if (!hasSelection()) {
+    if (selected.length === 0) {
       Alert.alert('Προσοχή', 'Επίλεξε τουλάχιστον μία θέση');
       return;
     }
-    const items = Object.entries(selection)
-      .filter(([, qty]) => qty > 0)
-      .map(([catId, qty]) => ({ category_id: Number(catId), quantity: qty }));
+    const itemsMap: Record<number, number> = {};
+    for (const s of selected) {
+      itemsMap[s.categoryId] = (itemsMap[s.categoryId] || 0) + 1;
+    }
+    const items = Object.entries(itemsMap).map(([catId, qty]) => ({
+      category_id: Number(catId),
+      quantity: qty,
+    }));
 
     setSubmitting(true);
     try {
       await api.post('/reservations', { showtime_id: Number(showtimeId), items });
-      Alert.alert('Επιτυχία! 🎭', 'Η κράτησή σου ολοκληρώθηκε!', [
-        { text: 'ΟΚ', onPress: () => router.replace('/(tabs)/profile') },
+      Alert.alert('Επιτυχία! 🎭', `Κράτηση ${selected.length} θέσεων ολοκληρώθηκε!`, [
+        { text: 'Εντάξει', onPress: () => router.replace('/(tabs)/profile') },
       ]);
     } catch (err: any) {
       Alert.alert('Σφάλμα', err.response?.data?.error || 'Αποτυχία κράτησης');
@@ -79,82 +139,156 @@ export default function BookingScreen() {
     }
   }
 
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator color="#e94560" size="large" />
-      </View>
-    );
-  }
+  if (loading) return <View style={styles.centered}><ActivityIndicator color="#E5534B" size="large" /></View>;
+
+  const currentRows = seatMap.map((row) => row[0]?.row).filter(Boolean);
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.heading}>Επιλογή Θέσεων</Text>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
-        {categories.map((cat) => {
-          const qty = selection[cat.category_id] || 0;
-          return (
-            <View key={cat.category_id} style={styles.card}>
-              <View style={styles.cardLeft}>
-                <Text style={styles.catName}>{cat.name}</Text>
-                <Text style={styles.catPrice}>€{parseFloat(cat.price).toFixed(2)} / θέση</Text>
-                <Text style={styles.catAvail}>{cat.available_seats} διαθέσιμες</Text>
-              </View>
-              <View style={styles.counter}>
-                <TouchableOpacity style={styles.counterBtn} onPress={() => changeQty(cat.category_id, -1, cat.available_seats)}>
-                  <Text style={styles.counterBtnText}>−</Text>
-                </TouchableOpacity>
-                <Text style={styles.counterQty}>{qty}</Text>
-                <TouchableOpacity style={styles.counterBtn} onPress={() => changeQty(cat.category_id, +1, cat.available_seats)}>
-                  <Text style={styles.counterBtnText}>+</Text>
-                </TouchableOpacity>
-              </View>
+        {/* Screen indicator */}
+        <View style={styles.screenWrap}>
+          <View style={styles.screenBar} />
+          <Text style={styles.screenLabel}>ΣΚΗΝΗ</Text>
+        </View>
+
+        {/* Category Legend */}
+        <View style={styles.legend}>
+          {categories.map((cat) => (
+            <View key={cat.category_id} style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: getCatColor(cat.name) }]} />
+              <Text style={styles.legendText}>{cat.name} €{parseFloat(cat.price).toFixed(0)}</Text>
             </View>
-          );
-        })}
+          ))}
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#2D2D3E' }]} />
+            <Text style={styles.legendText}>Κρατημένη</Text>
+          </View>
+        </View>
+
+        {/* Seat Map */}
+        <View style={styles.seatMapWrap}>
+          {seatMap.map((row, rowIdx) => {
+            const cat = getCategoryForRow(row[0]?.row);
+            const showLabel = rowIdx === 0 || row[0]?.row !== seatMap[rowIdx - 1]?.[0]?.row;
+            return (
+              <View key={row[0]?.row || rowIdx}>
+                {cat && (rowIdx === 0 || getCategoryForRow(seatMap[rowIdx - 1]?.[0]?.row)?.category_id !== cat.category_id) && (
+                  <Text style={styles.catLabel}>{cat.name.toUpperCase()}</Text>
+                )}
+                <View style={styles.seatRow}>
+                  <Text style={styles.rowLabel}>{row[0]?.row}</Text>
+                  {row.map((seat, colIdx) => (
+                    <View key={seat.id} style={colIdx === AISLE_AFTER ? styles.aisleGap : undefined}>
+                      <TouchableOpacity
+                        style={[
+                          styles.seat,
+                          seat.state === 'available' && { backgroundColor: getCatColor(cat?.name || '') + '33', borderColor: getCatColor(cat?.name || '') },
+                          seat.state === 'selected' && { backgroundColor: getCatColor(cat?.name || ''), borderColor: getCatColor(cat?.name || '') },
+                          seat.state === 'taken' && styles.seatTaken,
+                        ]}
+                        onPress={() => toggleSeat(seat)}
+                        disabled={seat.state === 'taken'}
+                      >
+                        {seat.state === 'selected' && (
+                          <Ionicons name="checkmark" size={9} color="#fff" />
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  <Text style={styles.rowLabel}>{row[0]?.row}</Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Seat state legend */}
+        <View style={styles.stateLegend}>
+          <View style={styles.legendItem}>
+            <View style={[styles.seatMini, { borderColor: '#E5534B', backgroundColor: '#E5534B33' }]} />
+            <Text style={styles.legendText}>Διαθέσιμη</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.seatMini, { backgroundColor: '#E5534B', borderColor: '#E5534B' }]} />
+            <Text style={styles.legendText}>Επιλεγμένη</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.seatMini, { backgroundColor: '#2D2D3E', borderColor: '#2D2D3E' }]} />
+            <Text style={styles.legendText}>Κρατημένη</Text>
+          </View>
+        </View>
+
       </ScrollView>
 
-      <View style={styles.footer}>
-        <Text style={styles.total}>Σύνολο: €{calcTotal()}</Text>
+      {/* Bottom Bar */}
+      <View style={styles.bottomBar}>
+        <View>
+          <Text style={styles.selectedCount}>{selected.length} θέσεις επιλεγμένες</Text>
+          <Text style={styles.total}>€{calcTotal()}</Text>
+        </View>
         <TouchableOpacity
-          style={[styles.bookBtn, !hasSelection() && styles.bookBtnDisabled]}
+          style={[styles.bookBtn, selected.length === 0 && styles.bookBtnDisabled]}
           onPress={handleBook}
-          disabled={submitting || !hasSelection()}
+          disabled={submitting || selected.length === 0}
         >
-          <Text style={styles.bookBtnText}>{submitting ? 'Κράτηση...' : '🎟 Κράτηση'}</Text>
+          <Ionicons name="ticket-outline" size={18} color="#fff" />
+          <Text style={styles.bookBtnText}>{submitting ? 'Κράτηση...' : 'Κράτηση'}</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
+function getCatColor(name: string): string {
+  const n = name?.toLowerCase() || '';
+  if (n.includes('vip')) return '#F59E0B';
+  if (n.includes('φοιτ')) return '#10B981';
+  return '#E5534B';
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1a1a2e' },
-  centered: { flex: 1, backgroundColor: '#1a1a2e', justifyContent: 'center', alignItems: 'center' },
-  scroll: { padding: 16 },
-  heading: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 16 },
-  card: {
-    backgroundColor: '#16213e', borderRadius: 12, padding: 16,
-    marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  container: { flex: 1, backgroundColor: '#0A0A1A' },
+  centered: { flex: 1, backgroundColor: '#0A0A1A', justifyContent: 'center', alignItems: 'center' },
+  scroll: { paddingBottom: 20 },
+  screenWrap: { alignItems: 'center', marginTop: 20, marginBottom: 10 },
+  screenBar: {
+    width: '70%', height: 6, borderRadius: 3,
+    backgroundColor: '#E5534B', opacity: 0.8,
+    shadowColor: '#E5534B', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 12,
+    elevation: 8,
   },
-  cardLeft: { flex: 1 },
-  catName: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
-  catPrice: { color: '#e94560', fontSize: 14, marginBottom: 2 },
-  catAvail: { color: '#a8a8b3', fontSize: 12 },
-  counter: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  counterBtn: {
-    backgroundColor: '#0f3460', width: 36, height: 36,
-    borderRadius: 18, justifyContent: 'center', alignItems: 'center',
+  screenLabel: { color: '#4B5563', fontSize: 11, letterSpacing: 4, marginTop: 6 },
+  legend: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', gap: 12, marginVertical: 12, paddingHorizontal: 16 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  legendDot: { width: 12, height: 12, borderRadius: 3 },
+  legendText: { color: '#9CA3AF', fontSize: 11 },
+  seatMapWrap: { paddingHorizontal: 8, alignItems: 'center' },
+  catLabel: { color: '#4B5563', fontSize: 10, letterSpacing: 2, textAlign: 'center', marginTop: 10, marginBottom: 4 },
+  seatRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
+  rowLabel: { color: '#4B5563', fontSize: 10, width: 14, textAlign: 'center' },
+  seat: {
+    width: 22, height: 22, borderRadius: 4, margin: 2,
+    borderWidth: 1, justifyContent: 'center', alignItems: 'center',
+    borderColor: '#2D2D3E', backgroundColor: '#2D2D3E',
   },
-  counterBtnText: { color: '#fff', fontSize: 20, lineHeight: 22 },
-  counterQty: { color: '#fff', fontSize: 18, fontWeight: 'bold', minWidth: 24, textAlign: 'center' },
-  footer: {
-    backgroundColor: '#16213e', padding: 16,
+  seatTaken: { backgroundColor: '#1C1C2E', borderColor: '#1C1C2E' },
+  aisleGap: { marginLeft: 8 },
+  stateLegend: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginTop: 16 },
+  seatMini: { width: 16, height: 16, borderRadius: 3, borderWidth: 1 },
+  bottomBar: {
+    backgroundColor: '#1C1C2E', padding: 16,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    borderTopWidth: 1, borderTopColor: '#2D2D3E',
   },
-  total: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-  bookBtn: { backgroundColor: '#e94560', borderRadius: 10, paddingHorizontal: 24, paddingVertical: 12 },
-  bookBtnDisabled: { opacity: 0.4 },
+  selectedCount: { color: '#9CA3AF', fontSize: 12, marginBottom: 2 },
+  total: { color: '#fff', fontSize: 22, fontWeight: 'bold' },
+  bookBtn: {
+    backgroundColor: '#E5534B', borderRadius: 12,
+    paddingHorizontal: 22, paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+  },
+  bookBtnDisabled: { opacity: 0.35 },
   bookBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
 });

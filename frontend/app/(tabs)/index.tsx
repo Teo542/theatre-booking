@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
-  StyleSheet, ActivityIndicator, Alert,
+  StyleSheet, ActivityIndicator, ScrollView, StatusBar,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import api from '../../lib/api';
 
 type Show = {
@@ -16,11 +17,22 @@ type Show = {
   location: string;
 };
 
+const GENRE_FILTERS = ['Όλα', 'Τραγωδία', 'Κωμωδία', 'Σύγχρονο', 'Αρχαίο'];
+
+const SHOW_COLORS = [
+  ['#E5534B', '#7C3AED'],
+  ['#F97316', '#DB2777'],
+  ['#0EA5E9', '#7C3AED'],
+  ['#10B981', '#0EA5E9'],
+  ['#F59E0B', '#E5534B'],
+];
+
 export default function HomeScreen() {
   const router = useRouter();
   const [shows, setShows] = useState<Show[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState('Όλα');
 
   useEffect(() => {
     fetchShows();
@@ -33,26 +45,48 @@ export default function HomeScreen() {
       if (query) params.title = query;
       const { data } = await api.get('/shows', { params });
       setShows(data);
-    } catch (err: any) {
-      Alert.alert('Σφάλμα', 'Αδυναμία φόρτωσης παραστάσεων');
+    } catch {
+      // silent
     } finally {
       setLoading(false);
     }
   }
 
-  function handleSearch() {
-    fetchShows(search);
-  }
-
-  function renderItem({ item }: { item: Show }) {
+  function renderShowCard({ item, index }: { item: Show; index: number }) {
+    const colors = SHOW_COLORS[index % SHOW_COLORS.length];
     return (
-      <TouchableOpacity style={styles.card} onPress={() => router.push(`/show/${item.show_id}`)}>
-        <Text style={styles.cardTitle}>{item.title}</Text>
-        <Text style={styles.cardTheatre}>🏛 {item.theatre_name}</Text>
-        <Text style={styles.cardLocation}>📍 {item.location}</Text>
-        <View style={styles.cardMeta}>
-          <Text style={styles.metaText}>⏱ {item.duration} λεπτά</Text>
-          <Text style={styles.metaText}>🔞 {item.age_rating}</Text>
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.85}
+        onPress={() => router.push(`/show/${item.show_id}`)}
+      >
+        <View style={[styles.cardPoster, { backgroundColor: colors[0] }]}>
+          <View style={[styles.cardPosterAccent, { backgroundColor: colors[1] }]} />
+          <Text style={styles.cardPosterEmoji}>🎭</Text>
+          <View style={styles.cardPosterBadge}>
+            <Text style={styles.cardPosterBadgeText}>{item.age_rating}</Text>
+          </View>
+        </View>
+        <View style={styles.cardBody}>
+          <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+          <View style={styles.cardRow}>
+            <Ionicons name="business-outline" size={12} color="#9CA3AF" />
+            <Text style={styles.cardMeta} numberOfLines={1}> {item.theatre_name}</Text>
+          </View>
+          <View style={styles.cardRow}>
+            <Ionicons name="location-outline" size={12} color="#9CA3AF" />
+            <Text style={styles.cardMeta} numberOfLines={1}> {item.location}</Text>
+          </View>
+          <View style={styles.cardFooter}>
+            <View style={styles.durationBadge}>
+              <Ionicons name="time-outline" size={11} color="#E5534B" />
+              <Text style={styles.durationText}> {item.duration}'</Text>
+            </View>
+            <View style={styles.bookNowBtn}>
+              <Text style={styles.bookNowText}>Κράτηση</Text>
+              <Ionicons name="chevron-forward" size={12} color="#E5534B" />
+            </View>
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -60,30 +94,63 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.searchRow}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Αναζήτηση παράστασης ή τοποθεσίας..."
-          placeholderTextColor="#888"
-          value={search}
-          onChangeText={setSearch}
-          onSubmitEditing={handleSearch}
-          returnKeyType="search"
-        />
-        <TouchableOpacity style={styles.searchBtn} onPress={handleSearch}>
-          <Text style={styles.searchBtnText}>🔍</Text>
-        </TouchableOpacity>
+      <StatusBar barStyle="light-content" backgroundColor="#0A0A1A" />
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchBar}>
+          <Ionicons name="search-outline" size={18} color="#9CA3AF" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Αναζήτηση παράστασης..."
+            placeholderTextColor="#4B5563"
+            value={search}
+            onChangeText={setSearch}
+            onSubmitEditing={() => fetchShows(search)}
+            returnKeyType="search"
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => { setSearch(''); fetchShows(); }}>
+              <Ionicons name="close-circle" size={18} color="#4B5563" />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
+      {/* Genre Filter */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterScroll}
+        contentContainerStyle={styles.filterContent}
+      >
+        {GENRE_FILTERS.map((f) => (
+          <TouchableOpacity
+            key={f}
+            style={[styles.filterPill, activeFilter === f && styles.filterPillActive]}
+            onPress={() => setActiveFilter(f)}
+          >
+            <Text style={[styles.filterText, activeFilter === f && styles.filterTextActive]}>{f}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* Shows List */}
       {loading ? (
-        <ActivityIndicator color="#e94560" size="large" style={{ marginTop: 40 }} />
+        <ActivityIndicator color="#E5534B" size="large" style={{ marginTop: 60 }} />
       ) : (
         <FlatList
           data={shows}
           keyExtractor={(item) => String(item.show_id)}
-          renderItem={renderItem}
+          renderItem={renderShowCard}
           contentContainerStyle={styles.list}
-          ListEmptyComponent={<Text style={styles.empty}>Δεν βρέθηκαν παραστάσεις</Text>}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyEmoji}>🎭</Text>
+              <Text style={styles.emptyText}>Δεν βρέθηκαν παραστάσεις</Text>
+            </View>
+          }
         />
       )}
     </View>
@@ -91,26 +158,53 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1a1a2e' },
-  searchRow: { flexDirection: 'row', padding: 12, gap: 8 },
-  searchInput: {
-    flex: 1, backgroundColor: '#16213e', color: '#fff',
-    borderRadius: 10, padding: 12, fontSize: 14,
+  container: { flex: 1, backgroundColor: '#0A0A1A' },
+  searchContainer: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#1C1C2E',
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, gap: 8,
   },
-  searchBtn: {
-    backgroundColor: '#e94560', borderRadius: 10,
-    justifyContent: 'center', alignItems: 'center', paddingHorizontal: 14,
+  searchInput: { flex: 1, color: '#fff', fontSize: 14 },
+  filterScroll: { maxHeight: 48 },
+  filterContent: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
+  filterPill: {
+    paddingHorizontal: 16, paddingVertical: 6,
+    borderRadius: 20, backgroundColor: '#1C1C2E', borderWidth: 1, borderColor: '#2D2D3E',
   },
-  searchBtnText: { fontSize: 18 },
-  list: { padding: 12, paddingTop: 4 },
+  filterPillActive: { backgroundColor: '#E5534B', borderColor: '#E5534B' },
+  filterText: { color: '#9CA3AF', fontSize: 13 },
+  filterTextActive: { color: '#fff', fontWeight: '600' },
+  list: { padding: 16, gap: 14 },
   card: {
-    backgroundColor: '#16213e', borderRadius: 12,
-    padding: 16, marginBottom: 12,
+    backgroundColor: '#1C1C2E', borderRadius: 16,
+    flexDirection: 'row', overflow: 'hidden',
   },
-  cardTitle: { color: '#fff', fontSize: 17, fontWeight: 'bold', marginBottom: 6 },
-  cardTheatre: { color: '#e94560', fontSize: 13, marginBottom: 2 },
-  cardLocation: { color: '#a8a8b3', fontSize: 13, marginBottom: 8 },
-  cardMeta: { flexDirection: 'row', gap: 16 },
-  metaText: { color: '#a8a8b3', fontSize: 12 },
-  empty: { color: '#a8a8b3', textAlign: 'center', marginTop: 40, fontSize: 16 },
+  cardPoster: {
+    width: 90, height: 120,
+    justifyContent: 'center', alignItems: 'center',
+    position: 'relative', overflow: 'hidden',
+  },
+  cardPosterAccent: {
+    position: 'absolute', bottom: -20, right: -20,
+    width: 80, height: 80, borderRadius: 40, opacity: 0.5,
+  },
+  cardPosterEmoji: { fontSize: 36, zIndex: 1 },
+  cardPosterBadge: {
+    position: 'absolute', top: 8, right: 8,
+    backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 4,
+    paddingHorizontal: 5, paddingVertical: 2,
+  },
+  cardPosterBadgeText: { color: '#fff', fontSize: 9, fontWeight: 'bold' },
+  cardBody: { flex: 1, padding: 12, justifyContent: 'space-between' },
+  cardTitle: { color: '#fff', fontSize: 15, fontWeight: 'bold', marginBottom: 6 },
+  cardRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 3 },
+  cardMeta: { color: '#9CA3AF', fontSize: 12, flex: 1 },
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
+  durationBadge: { flexDirection: 'row', alignItems: 'center' },
+  durationText: { color: '#E5534B', fontSize: 12 },
+  bookNowBtn: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  bookNowText: { color: '#E5534B', fontSize: 12, fontWeight: '600' },
+  emptyContainer: { alignItems: 'center', marginTop: 80 },
+  emptyEmoji: { fontSize: 48, marginBottom: 12 },
+  emptyText: { color: '#4B5563', fontSize: 16 },
 });

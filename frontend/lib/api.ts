@@ -2,8 +2,7 @@ import axios from 'axios';
 import { getToken, clearToken } from './auth';
 import { router } from 'expo-router';
 
-const API_BASE = 'http://10.0.2.2:3000'; // Android emulator → localhost
-// For physical device: replace with your machine's local IP, e.g. http://192.168.1.x:3000
+const API_BASE = 'http://192.168.1.33:3000';
 
 const api = axios.create({ baseURL: API_BASE });
 
