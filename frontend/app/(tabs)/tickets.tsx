@@ -3,13 +3,14 @@ import {
   View, Text, FlatList, TouchableOpacity,
   StyleSheet, ActivityIndicator, Alert,
 } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../lib/api';
 
 type ReservationItem = { category_name: string; quantity: number; unit_price: number };
 type Reservation = {
   reservation_id: number;
+  showtime_id: number;
   status: 'confirmed' | 'cancelled';
   date: string;
   time: string;
@@ -20,6 +21,7 @@ type Reservation = {
 };
 
 export default function TicketsScreen() {
+  const router = useRouter();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
@@ -119,10 +121,19 @@ export default function TicketsScreen() {
           <View style={styles.ticketFooter}>
             <Text style={styles.ticketTotal}>Σύνολο: €{calcTotal(item.items)}</Text>
             {!cancelled && future && (
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => handleCancel(item.reservation_id)}>
-                <Ionicons name="close-circle-outline" size={14} color="#E5534B" />
-                <Text style={styles.cancelBtnText}>Ακύρωση</Text>
-              </TouchableOpacity>
+              <View style={styles.ticketActions}>
+                <TouchableOpacity
+                  style={styles.editBtn}
+                  onPress={() => router.push(`/edit-reservation/${item.reservation_id}?showtimeId=${item.showtime_id}`)}
+                >
+                  <Ionicons name="create-outline" size={14} color="#0EA5E9" />
+                  <Text style={styles.editBtnText}>Επεξεργασία</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => handleCancel(item.reservation_id)}>
+                  <Ionicons name="close-circle-outline" size={14} color="#E5534B" />
+                  <Text style={styles.cancelBtnText}>Ακύρωση</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
         </View>
@@ -210,6 +221,9 @@ const styles = StyleSheet.create({
   ticketItem: { color: '#9CA3AF', fontSize: 12, marginBottom: 2 },
   ticketFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   ticketTotal: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
+  ticketActions: { flexDirection: 'row', gap: 12 },
+  editBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  editBtnText: { color: '#0EA5E9', fontSize: 12 },
   cancelBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   cancelBtnText: { color: '#E5534B', fontSize: 12 },
   emptyContainer: { alignItems: 'center', marginTop: 80 },

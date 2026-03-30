@@ -63,6 +63,7 @@ async function getUserReservations(req, res) {
 
   const [rows] = await db.query(
     `SELECT r.reservation_id, r.status, r.created_at,
+            r.showtime_id,
             st.date, st.time, st.hall,
             s.title AS show_title, s.duration,
             t.name AS theatre_name, t.location,

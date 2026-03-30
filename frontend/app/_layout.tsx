@@ -58,6 +58,17 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
+          name="edit-reservation/[id]"
+          options={{
+            headerShown: true,
+            title: 'Τροποποίηση Κράτησης',
+            headerBackTitle: '',
+            headerStyle: { backgroundColor: '#0A0A1A' },
+            headerTintColor: '#fff',
+            headerTitleStyle: { fontWeight: 'bold' },
+          }}
+        />
+        <Stack.Screen
           name="settings"
           options={{
             headerShown: true,
