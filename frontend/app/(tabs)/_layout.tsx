@@ -30,12 +30,22 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="tickets"
+        options={{
+          title: 'Εισιτήρια',
+          tabBarLabel: 'Εισιτήρια',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="ticket-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: 'Προφίλ',
-          tabBarLabel: 'Κρατήσεις',
+          tabBarLabel: 'Προφίλ',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="ticket-outline" size={size} color={color} />
+            <Ionicons name="person-outline" size={size} color={color} />
           ),
         }}
       />
