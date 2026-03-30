@@ -35,8 +35,39 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="show/[id]" options={{ headerShown: true, title: 'Παράσταση' }} />
-        <Stack.Screen name="booking/[showtimeId]" options={{ headerShown: true, title: 'Κράτηση' }} />
+        <Stack.Screen
+          name="show/[id]"
+          options={{
+            headerShown: true,
+            title: 'Παράσταση',
+            headerBackTitle: '',
+            headerStyle: { backgroundColor: '#0A0A1A' },
+            headerTintColor: '#fff',
+            headerTitleStyle: { fontWeight: 'bold' },
+          }}
+        />
+        <Stack.Screen
+          name="booking/[showtimeId]"
+          options={{
+            headerShown: true,
+            title: 'Κράτηση',
+            headerBackTitle: '',
+            headerStyle: { backgroundColor: '#0A0A1A' },
+            headerTintColor: '#fff',
+            headerTitleStyle: { fontWeight: 'bold' },
+          }}
+        />
+        <Stack.Screen
+          name="settings"
+          options={{
+            headerShown: true,
+            title: 'Ρυθμίσεις',
+            headerBackTitle: '',
+            headerStyle: { backgroundColor: '#0A0A1A' },
+            headerTintColor: '#fff',
+            headerTitleStyle: { fontWeight: 'bold' },
+          }}
+        />
       </Stack>
     </>
   );

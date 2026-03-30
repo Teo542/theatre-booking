@@ -166,14 +166,14 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, color: '#fff', fontSize: 14 },
   filterScroll: { maxHeight: 48 },
-  filterContent: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
+  filterContent: { paddingHorizontal: 16, paddingVertical: 8 },
   filterPill: {
-    paddingHorizontal: 16, paddingVertical: 6,
+    paddingHorizontal: 16, paddingVertical: 6, marginRight: 8,
     borderRadius: 20, backgroundColor: '#1C1C2E', borderWidth: 1, borderColor: '#2D2D3E',
   },
   filterPillActive: { backgroundColor: '#E5534B', borderColor: '#E5534B' },
-  filterText: { color: '#9CA3AF', fontSize: 13 },
-  filterTextActive: { color: '#fff', fontWeight: '600' },
+  filterText: { color: '#9CA3AF', fontSize: 13, letterSpacing: 0.3 },
+  filterTextActive: { color: '#fff', fontWeight: '600', letterSpacing: 0.3 },
   list: { padding: 16, gap: 14 },
   card: {
     backgroundColor: '#1C1C2E', borderRadius: 16,
