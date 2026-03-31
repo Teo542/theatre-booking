@@ -59,11 +59,11 @@ A full-stack mobile application for booking theatre seats, built as a university
 ## Features
 
 - **Authentication** — Register and login with email/password. JWT stored securely on device via `expo-secure-store`. Auto-redirect on 401.
-- **Browse Shows** — List all theatre shows with search by title. Filter by genre. Show poster cards with theatre name, location, duration.
+- **Browse Shows** — List all theatre shows with search by title. Filter by genre (Τραγωδία / Κωμωδία / Σύγχρονο / Αρχαίο) — genre pills call the API with a `?genre=` param, combined with search. Show poster cards with theatre name, location, duration.
 - **Show Detail** — Full show info, horizontal date picker strip, showtimes with availability indicators (available / almost full / sold out).
 - **Seat Map** — Visual seat grid (rows A–L, 12 columns) with color-coded categories: 🟡 VIP, 🔴 Standard, 🟢 Student. Tap to select individual seats. Aisle gap at center.
 - **Booking** — Atomic reservation with DB transaction — checks availability and decrements seat count in a single locked operation.
-- **Tickets tab** — Ticket-stub UI showing upcoming and past bookings. Cancel future reservations (restores seats).
+- **Tickets tab** — Ticket-stub UI showing upcoming and past bookings. Cancel or modify future reservations (seats restored/reallocated atomically).
 - **Profile tab** — User avatar, booking stats (total / upcoming / cancelled), account info, quick navigation shortcuts.
 - **Settings** — Accessible via gear icon in the profile header. Notification preferences, privacy controls, app info, account management (change password, delete account).
 
@@ -79,7 +79,7 @@ theatres
   theatre_id PK │ name │ location │ description
 
 shows
-  show_id PK │ theatre_id FK → theatres │ title │ description │ duration │ age_rating
+  show_id PK │ theatre_id FK → theatres │ title │ description │ duration │ age_rating │ genre
 
 showtimes
   showtime_id PK │ show_id FK → shows │ date │ time │ hall │ total_seats │ available_seats
@@ -103,7 +103,7 @@ reservation_items
 | `POST` | `/register` | — | Create account, returns JWT |
 | `POST` | `/login` | — | Login, returns JWT |
 | `GET` | `/theatres` | — | List all theatres (search: `?search=`) |
-| `GET` | `/shows` | — | List shows (filters: `?theatreId=`, `?title=`, `?date=`) |
+| `GET` | `/shows` | — | List shows (filters: `?theatreId=`, `?title=`, `?date=`, `?genre=`) |
 | `GET` | `/shows/:id` | — | Show detail |
 | `GET` | `/showtimes` | — | Showtimes for a show (`?showId=`) |
 | `GET` | `/seats` | ✅ | Seat categories for a showtime (`?showtimeId=`) |
