@@ -1,7 +1,7 @@
 const db = require('../db');
 
 async function getShows(req, res) {
-  const { theatreId, title, date } = req.query;
+  const { theatreId, title, date, genre } = req.query;
   let sql = `
     SELECT s.*, t.name AS theatre_name, t.location
     FROM shows s
@@ -21,6 +21,10 @@ async function getShows(req, res) {
   if (date) {
     sql += ' AND EXISTS (SELECT 1 FROM showtimes st WHERE st.show_id = s.show_id AND st.date = ?)';
     params.push(date);
+  }
+  if (genre) {
+    sql += ' AND s.genre = ?';
+    params.push(genre);
   }
 
   const [rows] = await db.query(sql, params);

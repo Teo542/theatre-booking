@@ -38,11 +38,12 @@ export default function HomeScreen() {
     fetchShows();
   }, []);
 
-  async function fetchShows(query?: string) {
+  async function fetchShows(query?: string, genre?: string) {
     setLoading(true);
     try {
       const params: any = {};
       if (query) params.title = query;
+      if (genre && genre !== 'Όλα') params.genre = genre;
       const { data } = await api.get('/shows', { params });
       setShows(data);
     } catch {
@@ -106,11 +107,11 @@ export default function HomeScreen() {
             placeholderTextColor="#4B5563"
             value={search}
             onChangeText={setSearch}
-            onSubmitEditing={() => fetchShows(search)}
+            onSubmitEditing={() => fetchShows(search, activeFilter)}
             returnKeyType="search"
           />
           {search.length > 0 && (
-            <TouchableOpacity onPress={() => { setSearch(''); fetchShows(); }}>
+            <TouchableOpacity onPress={() => { setSearch(''); fetchShows(undefined, activeFilter); }}>
               <Ionicons name="close-circle" size={18} color="#4B5563" />
             </TouchableOpacity>
           )}
@@ -128,7 +129,7 @@ export default function HomeScreen() {
           <TouchableOpacity
             key={f}
             style={[styles.filterPill, activeFilter === f && styles.filterPillActive]}
-            onPress={() => setActiveFilter(f)}
+            onPress={() => { setActiveFilter(f); fetchShows(search, f); }}
           >
             <Text style={[styles.filterText, activeFilter === f && styles.filterTextActive]}>{f}</Text>
           </TouchableOpacity>

@@ -23,6 +23,7 @@ CREATE TABLE shows (
   description TEXT,
   duration INT NOT NULL COMMENT 'duration in minutes',
   age_rating VARCHAR(10),
+  genre VARCHAR(50),
   FOREIGN KEY (theatre_id) REFERENCES theatres(theatre_id)
 );
 
