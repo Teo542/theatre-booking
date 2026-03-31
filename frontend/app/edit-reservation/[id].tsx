@@ -39,7 +39,7 @@ export default function EditReservationScreen() {
         api.get('/user/reservations'),
       ]);
 
-      const cats: Category[] = catsRes.data;
+      const cats: Category[] = catsRes.data.categories;
       const reservation = resRes.data.find((r: any) => String(r.reservation_id) === String(id));
       const items: CurrentItem[] = reservation?.items || [];
 

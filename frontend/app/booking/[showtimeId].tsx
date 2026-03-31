@@ -30,7 +30,8 @@ const ROWS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 const COLS = 12;
 const AISLE_AFTER = 5;
 
-function buildSeatMap(categories: Category[]): Seat[][] {
+function buildSeatMap(categories: Category[], reserved: string[] = []): Seat[][] {
+  const reservedSet = new Set(reserved);
   const rowsPerCat: Record<number, string[]> = {};
   let rowIdx = 0;
   for (const cat of categories) {
@@ -39,22 +40,20 @@ function buildSeatMap(categories: Category[]): Seat[][] {
     rowIdx += needed;
   }
 
-  return categories.flatMap((cat) => {
-    const takenSeats = cat.total_seats - cat.available_seats;
-    let filledCount = 0;
-    return (rowsPerCat[cat.category_id] || []).map((row) => {
-      return Array.from({ length: COLS }, (_, col) => {
-        filledCount++;
+  return categories.flatMap((cat) =>
+    (rowsPerCat[cat.category_id] || []).map((row) =>
+      Array.from({ length: COLS }, (_, col) => {
+        const id = `${row}${col + 1}`;
         return {
-          id: `${row}${col + 1}`,
+          id,
           row,
           col: col + 1,
-          state: filledCount <= takenSeats ? 'taken' : 'available',
+          state: reservedSet.has(id) ? 'taken' : 'available',
           categoryId: cat.category_id,
         } as Seat;
-      });
-    });
-  });
+      })
+    )
+  );
 }
 
 export default function BookingScreen() {
@@ -72,8 +71,9 @@ export default function BookingScreen() {
   async function loadCategories() {
     try {
       const { data } = await api.get('/seats', { params: { showtimeId } });
-      setCategories(data);
-      setSeatMap(buildSeatMap(data));
+      const { categories: cats, reserved } = data;
+      setCategories(cats);
+      setSeatMap(buildSeatMap(cats, reserved));
     } catch {
       Alert.alert('Σφάλμα', 'Αδυναμία φόρτωσης θέσεων');
     } finally {
@@ -119,18 +119,10 @@ export default function BookingScreen() {
       Alert.alert('Προσοχή', 'Επίλεξε τουλάχιστον μία θέση');
       return;
     }
-    const itemsMap: Record<number, number> = {};
-    for (const s of selected) {
-      itemsMap[s.categoryId] = (itemsMap[s.categoryId] || 0) + 1;
-    }
-    const items = Object.entries(itemsMap).map(([catId, qty]) => ({
-      category_id: Number(catId),
-      quantity: qty,
-    }));
-
     setSubmitting(true);
     try {
-      await api.post('/reservations', { showtime_id: Number(showtimeId), items });
+      const seat_ids = selected.map(s => s.id);
+      await api.post('/reservations', { showtime_id: Number(showtimeId), seat_ids });
       Alert.alert('Επιτυχία! 🎭', `Κράτηση ${selected.length} θέσεων ολοκληρώθηκε!`, [
         { text: 'Εντάξει', onPress: () => router.replace('/(tabs)/profile') },
       ]);

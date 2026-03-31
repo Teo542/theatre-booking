@@ -1,6 +1,45 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const db = require('./src/db');
+
+const SEAT_ROWS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+const SEAT_COLS = 12;
+
+async function populateSeats() {
+  const [unpopulated] = await db.query(`
+    SELECT st.showtime_id FROM showtimes st
+    LEFT JOIN seats s ON st.showtime_id = s.showtime_id
+    WHERE s.seat_id IS NULL GROUP BY st.showtime_id
+  `);
+  if (unpopulated.length === 0) return;
+
+  for (const { showtime_id } of unpopulated) {
+    const [categories] = await db.query(
+      'SELECT * FROM seat_categories WHERE showtime_id = ? ORDER BY price DESC',
+      [showtime_id]
+    );
+    let rowIdx = 0;
+    const inserts = [];
+    for (const cat of categories) {
+      const neededRows = Math.ceil(cat.total_seats / SEAT_COLS);
+      const catRows = SEAT_ROWS.slice(rowIdx, rowIdx + neededRows);
+      rowIdx += neededRows;
+      for (const row of catRows) {
+        for (let col = 1; col <= SEAT_COLS; col++) {
+          inserts.push([showtime_id, row, col, cat.category_id]);
+        }
+      }
+    }
+    if (inserts.length > 0) {
+      await db.query(
+        'INSERT IGNORE INTO seats (showtime_id, row, col, category_id) VALUES ?',
+        [inserts]
+      );
+    }
+  }
+  console.log(`Seats populated for ${unpopulated.length} showtimes`);
+}
 
 const authRoutes = require('./src/routes/auth');
 const theatreRoutes = require('./src/routes/theatres');
@@ -31,6 +70,7 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  try { await populateSeats(); } catch (e) { console.error('Seat population error:', e.message); }
 });

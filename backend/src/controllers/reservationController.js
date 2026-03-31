@@ -1,50 +1,71 @@
 const db = require('../db');
 
 async function createReservation(req, res) {
-  const { showtime_id, items } = req.body;
+  const { showtime_id, seat_ids } = req.body;
   const user_id = req.user.user_id;
 
-  if (!showtime_id || !items || items.length === 0) {
-    return res.status(400).json({ error: 'showtime_id and items are required' });
+  if (!showtime_id || !seat_ids || seat_ids.length === 0) {
+    return res.status(400).json({ error: 'showtime_id and seat_ids are required' });
   }
 
   const conn = await db.getConnection();
   try {
     await conn.beginTransaction();
 
-    for (const item of items) {
-      const [cats] = await conn.query(
-        'SELECT available_seats FROM seat_categories WHERE category_id = ? AND showtime_id = ? FOR UPDATE',
-        [item.category_id, showtime_id]
-      );
-      if (cats.length === 0) throw new Error(`Category ${item.category_id} not found`);
-      if (cats[0].available_seats < item.quantity) {
-        throw new Error(`Not enough seats in category ${item.category_id}`);
-      }
-    }
+    // Parse seat labels (e.g. "A1", "B12") into row/col
+    const parsed = seat_ids.map(id => ({
+      label: id,
+      row: id.match(/^[A-Z]+/)[0],
+      col: parseInt(id.match(/\d+$/)[0]),
+    }));
 
-    const [res1] = await conn.query(
+    // Lock and verify all seats are available
+    const whereClause = parsed.map(() => '(row = ? AND col = ?)').join(' OR ');
+    const whereParams = parsed.flatMap(s => [s.row, s.col]);
+    const [seats] = await conn.query(
+      `SELECT * FROM seats WHERE showtime_id = ? AND (${whereClause}) FOR UPDATE`,
+      [showtime_id, ...whereParams]
+    );
+
+    if (seats.length !== seat_ids.length) throw new Error('Some seats not found');
+    const unavailable = seats.filter(s => s.status !== 'available');
+    if (unavailable.length > 0) throw new Error('Some seats are already reserved');
+
+    // Create reservation record
+    const [result] = await conn.query(
       'INSERT INTO reservations (user_id, showtime_id) VALUES (?, ?)',
       [user_id, showtime_id]
     );
-    const reservation_id = res1.insertId;
+    const reservation_id = result.insertId;
 
-    for (const item of items) {
-      const [cats] = await conn.query(
-        'SELECT price FROM seat_categories WHERE category_id = ?',
-        [item.category_id]
-      );
+    // Group seats by category
+    const byCategory = {};
+    for (const seat of seats) {
+      byCategory[seat.category_id] = (byCategory[seat.category_id] || 0) + 1;
+    }
+
+    // Insert reservation_items and update counts
+    for (const [category_id, quantity] of Object.entries(byCategory)) {
+      const [cats] = await conn.query('SELECT price FROM seat_categories WHERE category_id = ?', [category_id]);
       await conn.query(
         'INSERT INTO reservation_items (reservation_id, category_id, quantity, unit_price) VALUES (?, ?, ?, ?)',
-        [reservation_id, item.category_id, item.quantity, cats[0].price]
+        [reservation_id, category_id, quantity, cats[0].price]
       );
       await conn.query(
         'UPDATE seat_categories SET available_seats = available_seats - ? WHERE category_id = ?',
-        [item.quantity, item.category_id]
+        [quantity, category_id]
       );
       await conn.query(
         'UPDATE showtimes SET available_seats = available_seats - ? WHERE showtime_id = ?',
-        [item.quantity, showtime_id]
+        [quantity, showtime_id]
+      );
+    }
+
+    // Lock individual seats
+    for (const seat of seats) {
+      await conn.query(
+        "UPDATE seats SET status = 'reserved', reservation_id = ? WHERE seat_id = ?",
+        [reservation_id, seat.seat_id]
       );
     }
 
@@ -131,6 +152,11 @@ async function cancelReservation(req, res) {
         [item.quantity, reservation.showtime_id]
       );
     }
+    // Release individual seats
+    await conn.query(
+      "UPDATE seats SET status = 'available', reservation_id = NULL WHERE reservation_id = ?",
+      [id]
+    );
     await conn.commit();
     res.json({ message: 'Reservation cancelled successfully' });
   } catch (err) {
@@ -168,7 +194,13 @@ async function modifyReservation(req, res) {
   try {
     await conn.beginTransaction();
 
-    // Restore old seats
+    // Release old individual seats
+    await conn.query(
+      "UPDATE seats SET status = 'available', reservation_id = NULL WHERE reservation_id = ?",
+      [id]
+    );
+
+    // Restore old category counts
     const [oldItems] = await conn.query(
       'SELECT category_id, quantity FROM reservation_items WHERE reservation_id = ?',
       [id]
@@ -184,15 +216,20 @@ async function modifyReservation(req, res) {
       );
     }
 
-    // Check and apply new seats
+    // Auto-assign new seats per category
     for (const item of items) {
-      const [cats] = await conn.query(
-        'SELECT available_seats, price FROM seat_categories WHERE category_id = ? AND showtime_id = ? FOR UPDATE',
-        [item.category_id, reservation.showtime_id]
+      const [available] = await conn.query(
+        "SELECT seat_id FROM seats WHERE showtime_id = ? AND category_id = ? AND status = 'available' LIMIT ? FOR UPDATE",
+        [reservation.showtime_id, item.category_id, item.quantity]
       );
-      if (cats.length === 0) throw new Error(`Category ${item.category_id} not found`);
-      if (cats[0].available_seats < item.quantity) {
+      if (available.length < item.quantity) {
         throw new Error(`Not enough seats in category ${item.category_id}`);
+      }
+      for (const seat of available) {
+        await conn.query(
+          "UPDATE seats SET status = 'reserved', reservation_id = ? WHERE seat_id = ?",
+          [id, seat.seat_id]
+        );
       }
     }
 

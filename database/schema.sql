@@ -58,6 +58,19 @@ CREATE TABLE reservations (
   FOREIGN KEY (showtime_id) REFERENCES showtimes(showtime_id)
 );
 
+CREATE TABLE seats (
+  seat_id INT PRIMARY KEY AUTO_INCREMENT,
+  showtime_id INT NOT NULL,
+  row VARCHAR(2) NOT NULL,
+  col INT NOT NULL,
+  category_id INT NOT NULL,
+  status ENUM('available', 'reserved') DEFAULT 'available',
+  reservation_id INT NULL,
+  FOREIGN KEY (showtime_id) REFERENCES showtimes(showtime_id),
+  FOREIGN KEY (category_id) REFERENCES seat_categories(category_id),
+  UNIQUE KEY unique_seat (showtime_id, row, col)
+);
+
 CREATE TABLE reservation_items (
   item_id INT PRIMARY KEY AUTO_INCREMENT,
   reservation_id INT NOT NULL,
