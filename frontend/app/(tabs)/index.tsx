@@ -165,10 +165,10 @@ const styles = StyleSheet.create({
     borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, gap: 8,
   },
   searchInput: { flex: 1, color: '#fff', fontSize: 14 },
-  filterScroll: { maxHeight: 48 },
-  filterContent: { paddingHorizontal: 16, paddingVertical: 8 },
+  filterScroll: { flexShrink: 0 },
+  filterContent: { paddingHorizontal: 16, paddingVertical: 10, alignItems: 'center' },
   filterPill: {
-    paddingHorizontal: 16, paddingVertical: 6, marginRight: 8,
+    paddingHorizontal: 18, paddingVertical: 8, marginRight: 8,
     borderRadius: 20, backgroundColor: '#1C1C2E', borderWidth: 1, borderColor: '#2D2D3E',
   },
   filterPillActive: { backgroundColor: '#E5534B', borderColor: '#E5534B' },
