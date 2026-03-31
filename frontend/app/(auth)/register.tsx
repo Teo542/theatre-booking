@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, Alert, KeyboardAvoidingView, Platform, StatusBar,
+  StyleSheet, Alert, KeyboardAvoidingView, Platform, StatusBar, ScrollView,
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,8 +35,9 @@ export default function RegisterScreen() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
       <StatusBar barStyle="light-content" />
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
       <View style={styles.logoWrap}>
         <Text style={styles.logoEmoji}>🎭</Text>
@@ -102,12 +103,14 @@ export default function RegisterScreen() {
           </TouchableOpacity>
         </Link>
       </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0A0A1A', justifyContent: 'center', padding: 24 },
+  container: { flex: 1, backgroundColor: '#0A0A1A' },
+  scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
   logoWrap: { alignItems: 'center', marginBottom: 28 },
   logoEmoji: { fontSize: 48, marginBottom: 8 },
   logoTitle: { color: '#fff', fontSize: 24, fontWeight: 'bold', letterSpacing: 1 },

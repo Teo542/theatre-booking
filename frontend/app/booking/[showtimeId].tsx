@@ -4,6 +4,7 @@ import {
   ActivityIndicator, Alert, ScrollView,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../lib/api';
 
@@ -59,6 +60,7 @@ function buildSeatMap(categories: Category[]): Seat[][] {
 export default function BookingScreen() {
   const { showtimeId } = useLocalSearchParams<{ showtimeId: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [categories, setCategories] = useState<Category[]>([]);
   const [seatMap, setSeatMap] = useState<Seat[][]>([]);
   const [selected, setSelected] = useState<Seat[]>([]);
@@ -223,7 +225,7 @@ export default function BookingScreen() {
       </ScrollView>
 
       {/* Bottom Bar */}
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { paddingBottom: 16 + insets.bottom }]}>
         <View>
           <Text style={styles.selectedCount}>{selected.length} θέσεις επιλεγμένες</Text>
           <Text style={styles.total}>€{calcTotal()}</Text>
@@ -282,6 +284,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     borderTopWidth: 1, borderTopColor: '#2D2D3E',
   },
+  // paddingBottom applied inline via insets
   selectedCount: { color: '#9CA3AF', fontSize: 12, marginBottom: 2 },
   total: { color: '#fff', fontSize: 22, fontWeight: 'bold' },
   bookBtn: {
