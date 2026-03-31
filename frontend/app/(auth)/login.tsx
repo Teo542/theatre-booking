@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, Alert, KeyboardAvoidingView, Platform, StatusBar, ScrollView,
+  StyleSheet, Alert, KeyboardAvoidingView, StatusBar, ScrollView,
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,9 +34,9 @@ export default function LoginScreen() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+    <KeyboardAvoidingView behavior="padding" style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
       <View style={styles.logoWrap}>
         <Text style={styles.logoEmoji}>🎭</Text>
@@ -99,7 +99,8 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0A0A1A' },
-  scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
+  scroll: { flex: 1, backgroundColor: '#0A0A1A' },
+  scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 24 },
   logoWrap: { alignItems: 'center', marginBottom: 36 },
   logoEmoji: { fontSize: 56, marginBottom: 12 },
   logoTitle: { color: '#fff', fontSize: 26, fontWeight: 'bold', letterSpacing: 1 },
