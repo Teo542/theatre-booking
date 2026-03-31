@@ -159,11 +159,7 @@ npm install
 npx expo start
 ```
 
-> **Important:** In `frontend/lib/api.ts`, set `API_BASE` to your PC's local IP:
-> ```ts
-> const API_BASE = 'http://192.168.x.x:3000';
-> ```
-> Find your IP with `ipconfig` (Windows) or `ifconfig` (Mac/Linux).
+> **No manual IP configuration needed.** The app automatically detects the host machine's IP from the Expo dev server via `expo-constants`. Just make sure your phone and PC are on the same Wi-Fi network.
 
 Scan the QR code in the terminal with **Expo Go**.
 

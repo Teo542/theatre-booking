@@ -1,8 +1,12 @@
 import axios from 'axios';
 import { getToken, clearToken } from './auth';
 import { router } from 'expo-router';
+import Constants from 'expo-constants';
 
-const API_BASE = 'http://192.168.1.33:3000';
+const debuggerHost = Constants.expoConfig?.hostUri?.split(':')[0];
+const API_BASE = debuggerHost
+  ? `http://${debuggerHost}:3000`
+  : 'http://localhost:3000';
 
 const api = axios.create({ baseURL: API_BASE });
 
