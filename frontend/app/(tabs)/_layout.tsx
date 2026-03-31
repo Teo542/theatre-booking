@@ -11,8 +11,6 @@ export default function TabsLayout() {
           backgroundColor: '#0D0D1A',
           borderTopColor: '#1C1C2E',
           borderTopWidth: 1,
-          height: 60,
-          paddingBottom: 8,
         },
         tabBarActiveTintColor: '#E5534B',
         tabBarInactiveTintColor: '#4B5563',
