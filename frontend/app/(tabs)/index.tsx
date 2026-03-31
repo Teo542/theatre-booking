@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
     borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, gap: 8,
   },
   searchInput: { flex: 1, color: '#fff', fontSize: 14 },
-  filterScroll: { flexShrink: 0 },
+  filterScroll: { flexGrow: 0, flexShrink: 0 },
   filterContent: { paddingHorizontal: 16, paddingVertical: 10, alignItems: 'center' },
   filterPill: {
     paddingHorizontal: 18, paddingVertical: 8, marginRight: 8,
