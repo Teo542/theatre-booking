@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -71,11 +72,13 @@ export default function EditReservationScreen() {
   const [seatMap, setSeatMap] = useState<Seat[][]>([]);
   const [selected, setSelected] = useState<Seat[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => { loadData(); }, [id, showtimeId]);
 
-  async function loadData() {
+  async function loadData(showSpinner = true) {
+    if (showSpinner) setLoading(true);
     try {
       const [seatsRes, reservationsRes] = await Promise.all([
         api.get('/seats', { params: { showtimeId } }),
@@ -96,8 +99,14 @@ export default function EditReservationScreen() {
     } catch {
       Alert.alert('Σφάλμα', 'Αδυναμία φόρτωσης δεδομένων');
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await loadData(false);
+    setRefreshing(false);
   }
 
   function toggleSeat(seat: Seat) {
@@ -169,6 +178,15 @@ export default function EditReservationScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: 120 + insets.bottom }]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#E5534B"
+            colors={['#E5534B']}
+            progressBackgroundColor="#1C1C2E"
+          />
+        }
       >
         <View style={styles.screenWrap}>
           <View style={styles.screenBar} />

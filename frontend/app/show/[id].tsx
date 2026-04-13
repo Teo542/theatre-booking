@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -47,11 +48,13 @@ export default function ShowDetailScreen() {
   const [show, setShow] = useState<Show | null>(null);
   const [showtimes, setShowtimes] = useState<Showtime[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   useEffect(() => { loadData(); }, [id]);
 
-  async function loadData() {
+  async function loadData(showSpinner = true) {
+    if (showSpinner) setLoading(true);
     try {
       const [showRes, stRes] = await Promise.all([
         api.get(`/shows/${id}`),
@@ -59,12 +62,18 @@ export default function ShowDetailScreen() {
       ]);
       setShow(showRes.data);
       setShowtimes(stRes.data);
-      if (stRes.data.length > 0) setSelectedDate(stRes.data[0].date);
+      setSelectedDate(stRes.data[0]?.date || null);
     } catch {
       Alert.alert('Σφάλμα', 'Αδυναμία φόρτωσης δεδομένων');
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await loadData(false);
+    setRefreshing(false);
   }
 
   if (loading) return <View style={styles.centered}><ActivityIndicator color="#E5534B" size="large" /></View>;
@@ -75,7 +84,19 @@ export default function ShowDetailScreen() {
   const visibleShowtimes = selectedDate ? (grouped[selectedDate] || []) : [];
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor="#E5534B"
+          colors={['#E5534B']}
+          progressBackgroundColor="#1C1C2E"
+        />
+      }
+    >
       {/* Hero */}
       <View style={styles.hero}>
         <View style={styles.heroGradient} />

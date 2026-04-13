@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +14,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState({ total: 0, upcoming: 0, cancelled: 0 });
+  const [refreshing, setRefreshing] = useState(false);
 
   useFocusEffect(useCallback(() => { loadProfile(); }, []));
 
@@ -30,6 +32,12 @@ export default function ProfileScreen() {
     } catch {}
   }
 
+  async function handleRefresh() {
+    setRefreshing(true);
+    await loadProfile();
+    setRefreshing(false);
+  }
+
   async function handleLogout() {
     Alert.alert('Αποσύνδεση', 'Είσαι σίγουρος;', [
       { text: 'Ακύρωση' },
@@ -44,7 +52,19 @@ export default function ProfileScreen() {
   const initial = user?.name?.charAt(0).toUpperCase() || '?';
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor="#E5534B"
+          colors={['#E5534B']}
+          progressBackgroundColor="#1C1C2E"
+        />
+      }
+    >
 
       {/* Avatar & Name */}
       <View style={styles.heroSection}>

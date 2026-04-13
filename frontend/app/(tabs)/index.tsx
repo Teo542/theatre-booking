@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
   StyleSheet, ActivityIndicator, ScrollView, StatusBar,
+  RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,14 +33,15 @@ export default function HomeScreen() {
   const [shows, setShows] = useState<Show[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState('Όλα');
 
   useEffect(() => {
     fetchShows();
   }, []);
 
-  async function fetchShows(query?: string, genre?: string) {
-    setLoading(true);
+  async function fetchShows(query?: string, genre?: string, showSpinner = true) {
+    if (showSpinner) setLoading(true);
     try {
       const params: any = {};
       const trimmedQuery = query?.trim();
@@ -50,8 +52,14 @@ export default function HomeScreen() {
     } catch {
       // silent
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await fetchShows(search, activeFilter, false);
+    setRefreshing(false);
   }
 
   function renderShowCard({ item, index }: { item: Show; index: number }) {
@@ -147,6 +155,15 @@ export default function HomeScreen() {
           renderItem={renderShowCard}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#E5534B"
+              colors={['#E5534B']}
+              progressBackgroundColor="#1C1C2E"
+            />
+          }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyEmoji}>🎭</Text>

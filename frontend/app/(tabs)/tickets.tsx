@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   StyleSheet, ActivityIndicator, Alert,
+  RefreshControl,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,20 +25,27 @@ export default function TicketsScreen() {
   const router = useRouter();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
 
   useFocusEffect(useCallback(() => { load(); }, []));
 
-  async function load() {
-    setLoading(true);
+  async function load(showSpinner = true) {
+    if (showSpinner) setLoading(true);
     try {
       const { data } = await api.get('/user/reservations');
       setReservations(data);
     } catch {
       Alert.alert('Σφάλμα', 'Αδυναμία φόρτωσης κρατήσεων');
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await load(false);
+    setRefreshing(false);
   }
 
   async function handleCancel(id: number) {
@@ -175,6 +183,15 @@ export default function TicketsScreen() {
           renderItem={renderTicket}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#E5534B"
+              colors={['#E5534B']}
+              progressBackgroundColor="#1C1C2E"
+            />
+          }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyEmoji}>🎟</Text>
