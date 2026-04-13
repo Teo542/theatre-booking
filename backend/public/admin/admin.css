@@ -7,6 +7,8 @@
   --line: #343c4b;
   --accent: #d64a4a;
   --accent-dark: #b83a3a;
+  --primary: #2f6f7e;
+  --primary-dark: #275d6a;
   --green: #37c785;
   --blue: #54a9ff;
   --yellow: #f4bf4f;
@@ -228,7 +230,7 @@ textarea {
 }
 
 .btn {
-  border: 0;
+  border: 1px solid transparent;
   border-radius: 6px;
   padding: 10px 13px;
   font-weight: 700;
@@ -236,12 +238,19 @@ textarea {
 }
 
 .btn-primary {
-  background: var(--accent);
+  background: var(--primary);
+  border-color: #3c899a;
   color: #fff;
 }
 
 .btn-primary:hover {
-  background: var(--accent-dark);
+  background: var(--primary-dark);
+  border-color: #4b9daf;
+}
+
+.btn-primary:focus-visible {
+  outline: 3px solid rgba(84, 169, 255, 0.28);
+  outline-offset: 2px;
 }
 
 .btn-secondary {
