@@ -42,7 +42,8 @@ export default function HomeScreen() {
     setLoading(true);
     try {
       const params: any = {};
-      if (query) params.title = query;
+      const trimmedQuery = query?.trim();
+      if (trimmedQuery) params.search = trimmedQuery;
       if (genre && genre !== 'Όλα') params.genre = genre;
       const { data } = await api.get('/shows', { params });
       setShows(data);
@@ -103,7 +104,7 @@ export default function HomeScreen() {
           <Ionicons name="search-outline" size={18} color="#9CA3AF" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Αναζήτηση παράστασης..."
+            placeholder="Αναζήτηση παράστασης, θεάτρου ή περιοχής..."
             placeholderTextColor="#4B5563"
             value={search}
             onChangeText={setSearch}
