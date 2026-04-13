@@ -210,7 +210,7 @@ router.get('/showtimes', async (req, res) => {
     }
     const [rows] = await db.query(`
       SELECT
-        st.showtime_id, st.show_id, st.date, st.time, st.hall,
+        st.showtime_id, st.show_id, DATE_FORMAT(st.date, '%Y-%m-%d') AS date, st.time, st.hall,
         st.total_seats, st.available_seats,
         s.title AS show_title,
         t.name AS theatre_name,
@@ -346,7 +346,7 @@ router.get('/reservations', async (req, res) => {
         r.reservation_id, r.status, r.created_at,
         u.user_id, u.name AS user_name, u.email AS user_email,
         s.show_id, s.title AS show_title,
-        st.showtime_id, st.date, st.time, st.hall,
+        st.showtime_id, DATE_FORMAT(st.date, '%Y-%m-%d') AS date, st.time, st.hall,
         t.name AS theatre_name,
         JSON_ARRAYAGG(JSON_OBJECT(
           'category_name', sc.name,
@@ -382,7 +382,7 @@ router.delete('/reservations/:id', async (req, res) => {
   const { id } = req.params;
 
   const [rows] = await db.query(
-    'SELECT r.*, st.date, st.time FROM reservations r JOIN showtimes st ON r.showtime_id = st.showtime_id WHERE r.reservation_id = ?',
+    "SELECT r.*, DATE_FORMAT(st.date, '%Y-%m-%d') AS date, st.time FROM reservations r JOIN showtimes st ON r.showtime_id = st.showtime_id WHERE r.reservation_id = ?",
     [id]
   );
   if (rows.length === 0) return res.status(404).json({ error: 'Reservation not found' });
@@ -466,7 +466,7 @@ router.get('/recent-reservations', async (req, res) => {
         r.reservation_id, r.status, r.created_at,
         u.name AS user_name, u.email AS user_email,
         s.title AS show_title,
-        st.date, st.time,
+        DATE_FORMAT(st.date, '%Y-%m-%d') AS date, st.time,
         COALESCE(SUM(ri.unit_price * ri.quantity), 0) AS total
       FROM reservations r
       JOIN users u ON r.user_id = u.user_id
@@ -488,7 +488,7 @@ router.get('/upcoming-shows', async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT
-        st.showtime_id, st.date, st.time, st.hall,
+        st.showtime_id, DATE_FORMAT(st.date, '%Y-%m-%d') AS date, st.time, st.hall,
         st.total_seats, st.available_seats,
         s.title AS show_title,
         t.name AS theatre_name,

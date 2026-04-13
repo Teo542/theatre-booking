@@ -12,6 +12,12 @@ async function createReservation(req, res) {
   try {
     await conn.beginTransaction();
 
+    const [showtimes] = await conn.query(
+      "SELECT showtime_id FROM showtimes WHERE showtime_id = ? AND CONCAT(date, ' ', time) > NOW() FOR UPDATE",
+      [showtime_id]
+    );
+    if (showtimes.length === 0) throw new Error('Cannot book past or unavailable showtime');
+
     // Parse seat labels (e.g. "A1", "B12") into row/col
     const parsed = seat_ids.map(id => ({
       label: id,
@@ -85,7 +91,7 @@ async function getUserReservations(req, res) {
   const [rows] = await db.query(
     `SELECT r.reservation_id, r.status, r.created_at,
             r.showtime_id,
-            st.date, st.time, st.hall,
+            DATE_FORMAT(st.date, '%Y-%m-%d') AS date, st.time, st.hall,
             s.title AS show_title, s.duration,
             t.name AS theatre_name, t.location,
             JSON_ARRAYAGG(JSON_OBJECT(
@@ -118,7 +124,7 @@ async function cancelReservation(req, res) {
   const { id } = req.params;
 
   const [rows] = await db.query(
-    'SELECT r.*, st.date, st.time FROM reservations r JOIN showtimes st ON r.showtime_id = st.showtime_id WHERE r.reservation_id = ? AND r.user_id = ?',
+    "SELECT r.*, DATE_FORMAT(st.date, '%Y-%m-%d') AS date, st.time FROM reservations r JOIN showtimes st ON r.showtime_id = st.showtime_id WHERE r.reservation_id = ? AND r.user_id = ?",
     [id, user_id]
   );
   if (rows.length === 0) return res.status(404).json({ error: 'Reservation not found' });
@@ -177,7 +183,7 @@ async function modifyReservation(req, res) {
   }
 
   const [rows] = await db.query(
-    'SELECT r.*, st.date, st.time FROM reservations r JOIN showtimes st ON r.showtime_id = st.showtime_id WHERE r.reservation_id = ? AND r.user_id = ?',
+    "SELECT r.*, DATE_FORMAT(st.date, '%Y-%m-%d') AS date, st.time FROM reservations r JOIN showtimes st ON r.showtime_id = st.showtime_id WHERE r.reservation_id = ? AND r.user_id = ?",
     [id, user_id]
   );
   if (rows.length === 0) return res.status(404).json({ error: 'Reservation not found' });

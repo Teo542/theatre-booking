@@ -59,7 +59,11 @@ export default function TicketsScreen() {
   }
 
   function isFuture(date: string, time: string) {
-    return new Date(`${date}T${time}`) > new Date();
+    return new Date(`${date.slice(0, 10)}T${time}`) > new Date();
+  }
+
+  function displayDate(date: string) {
+    return date.slice(0, 10);
   }
 
   function calcTotal(items: ReservationItem[]) {
@@ -98,7 +102,7 @@ export default function TicketsScreen() {
           <View style={styles.ticketInfoGrid}>
             <View style={styles.ticketInfoCell}>
               <Text style={styles.ticketInfoLabel}>ΗΜΕΡΟΜΗΝΙΑ</Text>
-              <Text style={styles.ticketInfoValue}>{item.date}</Text>
+              <Text style={styles.ticketInfoValue}>{displayDate(item.date)}</Text>
             </View>
             <View style={styles.ticketInfoCell}>
               <Text style={styles.ticketInfoLabel}>ΩΡΑ</Text>

@@ -23,7 +23,7 @@ export default function ProfileScreen() {
       const { data } = await api.get('/user/reservations');
       const now = new Date();
       const upcoming = data.filter((r: any) =>
-        r.status === 'confirmed' && new Date(`${r.date}T${r.time}`) > now
+        r.status === 'confirmed' && new Date(`${String(r.date).slice(0, 10)}T${r.time}`) > now
       ).length;
       const cancelled = data.filter((r: any) => r.status === 'cancelled').length;
       setStats({ total: data.length, upcoming, cancelled });

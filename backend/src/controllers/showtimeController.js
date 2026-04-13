@@ -8,10 +8,13 @@ async function getShowtimes(req, res) {
   }
 
   const [rows] = await db.query(
-    `SELECT st.*, s.title AS show_title
+    `SELECT st.showtime_id, st.show_id, DATE_FORMAT(st.date, '%Y-%m-%d') AS date,
+            st.time, st.hall, st.total_seats, st.available_seats,
+            s.title AS show_title
      FROM showtimes st
      JOIN shows s ON st.show_id = s.show_id
      WHERE st.show_id = ?
+       AND CONCAT(st.date, ' ', st.time) > NOW()
      ORDER BY st.date, st.time`,
     [showId]
   );
