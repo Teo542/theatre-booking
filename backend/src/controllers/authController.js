@@ -24,12 +24,15 @@ async function register(req, res) {
   );
 
   const token = jwt.sign(
-    { user_id: result.insertId, email },
+    { user_id: result.insertId, email, is_admin: false },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
   );
 
-  res.status(201).json({ token, user: { user_id: result.insertId, name, email } });
+  res.status(201).json({
+    token,
+    user: { user_id: result.insertId, name, email, is_admin: false },
+  });
 }
 
 async function login(req, res) {
@@ -51,12 +54,20 @@ async function login(req, res) {
   }
 
   const token = jwt.sign(
-    { user_id: user.user_id, email: user.email },
+    { user_id: user.user_id, email: user.email, is_admin: Boolean(user.is_admin) },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
   );
 
-  res.json({ token, user: { user_id: user.user_id, name: user.name, email: user.email } });
+  res.json({
+    token,
+    user: {
+      user_id: user.user_id,
+      name: user.name,
+      email: user.email,
+      is_admin: Boolean(user.is_admin),
+    },
+  });
 }
 
 module.exports = { register, login };

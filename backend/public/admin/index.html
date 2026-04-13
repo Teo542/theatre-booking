@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TheatreBooking Admin</title>
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+
+  <!-- LOGIN SCREEN -->
+  <div id="login-screen">
+    <div class="login-card">
+      <div class="login-icon">🎭</div>
+      <h1 class="login-title">TheatreBooking Admin</h1>
+      <div id="login-error" class="login-error hidden"></div>
+      <form id="login-form" autocomplete="off">
+        <div class="form-group">
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" placeholder="admin@example.com" required />
+        </div>
+        <div class="form-group">
+          <label for="login-password">Κωδικός</label>
+          <input type="password" id="login-password" placeholder="••••••••" required />
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" id="login-btn">Σύνδεση</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="app" class="hidden">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <span class="sidebar-logo-icon">🎭</span>
+        <span class="sidebar-logo-text">Admin Panel</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="#dashboard" class="nav-item" data-view="dashboard">
+          <span class="nav-icon">📊</span>
+          <span>Πίνακας Ελέγχου</span>
+        </a>
+        <a href="#shows" class="nav-item" data-view="shows">
+          <span class="nav-icon">🎭</span>
+          <span>Παραστάσεις</span>
+        </a>
+        <a href="#schedule" class="nav-item" data-view="schedule">
+          <span class="nav-icon">📅</span>
+          <span>Πρόγραμμα</span>
+        </a>
+        <a href="#theatres" class="nav-item" data-view="theatres">
+          <span class="nav-icon">🏛️</span>
+          <span>Θέατρα</span>
+        </a>
+        <a href="#reservations" class="nav-item" data-view="reservations">
+          <span class="nav-icon">🎟️</span>
+          <span>Κρατήσεις</span>
+        </a>
+        <a href="#users" class="nav-item" data-view="users">
+          <span class="nav-icon">👥</span>
+          <span>Χρήστες</span>
+        </a>
+      </nav>
+
+      <button class="sidebar-logout" id="logout-btn">
+        <span>🚪</span>
+        <span>Αποσύνδεση</span>
+      </button>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main-wrapper">
+      <header class="top-header">
+        <h2 id="page-title">Πίνακας Ελέγχου</h2>
+        <div class="header-user">
+          <span class="header-user-icon">👤</span>
+          <span id="header-username">Admin</span>
+        </div>
+      </header>
+
+      <main id="main-content" class="main-content">
+        <!-- Rendered by JS -->
+      </main>
+    </div>
+
+  </div>
+
+  <!-- MODAL -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h3 id="modal-title"></h3>
+        <button class="modal-close" id="modal-close-btn" aria-label="Κλείσιμο">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="modal-cancel-btn">Ακύρωση</button>
+        <button class="btn btn-primary" id="modal-save-btn">Αποθήκευση</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOADING OVERLAY -->
+  <div id="loading-overlay" class="loading-overlay hidden">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="admin.js"></script>
+</body>
+</html>

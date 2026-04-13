@@ -1,5 +1,9 @@
 USE theatre_booking;
 
+INSERT INTO users (name, email, password_hash, is_admin) VALUES
+('Admin User', 'admin@example.com', '$2a$10$clxvCAlah6Ao30z.v9iv6eXQ/LM/WCNcxZIpGHSBkVyQvYz1s6esS', TRUE)
+ON DUPLICATE KEY UPDATE is_admin = TRUE;
+
 INSERT INTO theatres (name, location, description) VALUES
 ('Εθνικό Θέατρο', 'Αγίου Κωνσταντίνου 22-24, Αθήνα', 'Το κεντρικό θέατρο της χώρας με ιστορία από το 1900.'),
 ('Θέατρο Τέχνης', 'Σταδίου 17, Αθήνα', 'Ένα από τα πιο σημαντικά πειραματικά θέατρα της Αθήνας.'),

@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const db = require('./src/db');
 
 const SEAT_ROWS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
@@ -48,10 +49,12 @@ const showtimeRoutes = require('./src/routes/showtimes');
 const seatRoutes = require('./src/routes/seats');
 const reservationRoutes = require('./src/routes/reservations');
 const userRoutes = require('./src/routes/users');
+const adminRoutes = require('./src/routes/admin');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use('/admin', express.static(path.join(__dirname, 'public', 'admin')));
 
 // Auth (POST /register, POST /login)
 app.use('/', authRoutes);
@@ -63,6 +66,7 @@ app.use('/showtimes', showtimeRoutes);
 app.use('/seats', seatRoutes);
 app.use('/reservations', reservationRoutes);
 app.use('/user', userRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err.stack);

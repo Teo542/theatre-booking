@@ -66,6 +66,7 @@ A full-stack mobile application for booking theatre seats, built as a university
 - **Tickets tab** — Ticket-stub UI showing upcoming and past bookings. Cancel or modify future reservations (seats restored/reallocated atomically).
 - **Profile tab** — User avatar, booking stats (total / upcoming / cancelled), account info, quick navigation shortcuts.
 - **Settings** — Accessible via gear icon in the profile header. Notification preferences, privacy controls, app info, account management (change password, delete account).
+- **Admin Panel** — Browser-based dashboard at `http://localhost:3000/admin/` for viewing stats, users, reservations, theatres, shows and showtimes.
 
 ---
 
@@ -111,6 +112,12 @@ reservation_items
 | `PUT` | `/reservations/:id` | ✅ | Modify reservation |
 | `DELETE` | `/reservations/:id` | ✅ | Cancel reservation |
 | `GET` | `/user/reservations` | ✅ | Current user's booking history |
+
+Admin endpoints are mounted under `/api/admin/*` and require an admin JWT. The seed data creates:
+
+| Email | Password |
+|-------|----------|
+| `admin@example.com` | `Admin123!` |
 
 ---
 
