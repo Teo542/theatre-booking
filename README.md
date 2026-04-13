@@ -59,13 +59,13 @@ A full-stack mobile application for booking theatre seats, built as a university
 ## Features
 
 - **Authentication** — Register and login with email/password. JWT stored securely on device via `expo-secure-store`. Auto-redirect on 401.
-- **Browse Shows** — List all theatre shows with search by title. Filter by genre (Τραγωδία / Κωμωδία / Σύγχρονο / Αρχαίο) — genre pills call the API with a `?genre=` param, combined with search. Show poster cards with theatre name, location, duration.
+- **Browse Shows** — List all theatre shows with search by show title, theatre name, or location. Filter by genre (Τραγωδία / Κωμωδία / Σύγχρονο / Αρχαίο) — genre pills call the API with a `?genre=` param, combined with search. Show poster cards with theatre name, location, duration.
 - **Show Detail** — Full show info, horizontal date picker strip, showtimes with availability indicators (available / almost full / sold out).
 - **Seat Map** — Visual seat grid (rows A–L, 12 columns) with color-coded categories: 🟡 VIP, 🔴 Standard, 🟢 Student. Tap to select individual seats. Aisle gap at center.
-- **Booking** — Atomic reservation with DB transaction — checks availability and decrements seat count in a single locked operation.
-- **Tickets tab** — Ticket-stub UI showing upcoming and past bookings. Cancel or modify future reservations (seats restored/reallocated atomically).
+- **Booking** — Atomic reservation with DB transaction — locks the selected seat rows, checks availability, reserves the exact seats, and updates availability counts.
+- **Tickets tab** — Ticket-stub UI showing upcoming and past bookings. Cancel future reservations or edit them by selecting exact seats on the chair map.
 - **Profile tab** — User avatar, booking stats (total / upcoming / cancelled), account info, quick navigation shortcuts.
-- **Settings** — Accessible via gear icon in the profile header. Notification preferences, privacy controls, app info, account management (change password, delete account).
+- **Settings** — Accessible via gear icon in the profile header. Includes local notification/privacy toggles and account action placeholders for demonstration.
 - **Admin Panel** — Browser-based dashboard at `http://localhost:3000/admin/` for viewing stats, users, reservations, theatres, shows and showtimes.
 
 ---
@@ -74,7 +74,7 @@ A full-stack mobile application for booking theatre seats, built as a university
 
 ```
 users
-  user_id PK │ name │ email UNIQUE │ password_hash │ created_at
+  user_id PK │ name │ email UNIQUE │ password_hash │ is_admin │ created_at
 
 theatres
   theatre_id PK │ name │ location │ description
@@ -91,6 +91,9 @@ seat_categories
 reservations
   reservation_id PK │ user_id FK → users │ showtime_id FK → showtimes │ status │ created_at
 
+seats
+  seat_id PK │ showtime_id FK → showtimes │ row │ col │ category_id FK → seat_categories │ status │ reservation_id
+
 reservation_items
   item_id PK │ reservation_id FK → reservations │ category_id FK → seat_categories │ quantity │ unit_price
 ```
@@ -104,12 +107,12 @@ reservation_items
 | `POST` | `/register` | — | Create account, returns JWT |
 | `POST` | `/login` | — | Login, returns JWT |
 | `GET` | `/theatres` | — | List all theatres (search: `?search=`) |
-| `GET` | `/shows` | — | List shows (filters: `?theatreId=`, `?title=`, `?date=`, `?genre=`) |
+| `GET` | `/shows` | — | List shows (filters: `?search=`, `?theatreId=`, `?title=`, `?date=`, `?genre=`) |
 | `GET` | `/shows/:id` | — | Show detail |
 | `GET` | `/showtimes` | — | Showtimes for a show (`?showId=`) |
 | `GET` | `/seats` | ✅ | Seat categories for a showtime (`?showtimeId=`) |
 | `POST` | `/reservations` | ✅ | Create reservation (DB transaction) |
-| `PUT` | `/reservations/:id` | ✅ | Modify reservation |
+| `PUT` | `/reservations/:id` | ✅ | Modify reservation with exact `seat_ids` |
 | `DELETE` | `/reservations/:id` | ✅ | Cancel reservation |
 | `GET` | `/user/reservations` | ✅ | Current user's booking history |
 
@@ -118,6 +121,12 @@ Admin endpoints are mounted under `/api/admin/*` and require an admin JWT. The s
 | Email | Password |
 |-------|----------|
 | `admin@example.com` | `Admin123!` |
+
+Open the browser admin panel at:
+
+```text
+http://localhost:3000/admin/
+```
 
 ---
 
@@ -146,6 +155,12 @@ mysql -u root -p < database/seed.sql
 ```
 
 This creates the `theatre_booking` database with 3 theatres, 5 shows, 9 showtimes and sample seat categories.
+
+On Windows, if MariaDB is installed but not registered as a service, it can be started manually:
+
+```powershell
+& "C:\Program Files\MariaDB 12.2\bin\mysqld.exe" --defaults-file="C:\Program Files\MariaDB 12.2\data\my.ini" --console
+```
 
 ### 3. Backend
 
@@ -186,8 +201,10 @@ theatre-booking/
 │   │   │   ├── seatController.js        # seat categories
 │   │   │   └── reservationController.js # CRUD + transaction logic
 │   │   ├── middleware/
-│   │   │   └── auth.js                  # JWT verify middleware
+│   │   │   ├── auth.js                  # JWT verify middleware
+│   │   │   └── adminAuth.js             # Admin JWT middleware
 │   │   ├── routes/
+│   │   │   ├── admin.js                 # admin CRUD/stat endpoints
 │   │   │   ├── auth.js
 │   │   │   ├── theatres.js
 │   │   │   ├── shows.js
@@ -197,6 +214,7 @@ theatre-booking/
 │   │   │   └── users.js
 │   │   └── db.js                        # mysql2 connection pool
 │   ├── app.js                           # Express app entry point
+│   ├── public/admin/                    # browser admin panel
 │   ├── .env.example
 │   └── package.json
 │
@@ -212,7 +230,8 @@ theatre-booking/
 │   │   │   └── profile.tsx             # User profile + stats
 │   │   ├── show/[id].tsx               # Show detail + showtimes
 │   │   ├── booking/[showtimeId].tsx    # Seat map + booking form
-│   │   └── settings.tsx               # App settings (notifications, privacy, account)
+│   │   ├── edit-reservation/[id].tsx   # Seat map + exact-seat edit flow
+│   │   └── settings.tsx               # App settings (local/demo actions)
 │   ├── lib/
 │   │   ├── api.ts                       # Axios instance + JWT interceptor
 │   │   └── auth.ts                      # SecureStore token helpers
@@ -227,19 +246,23 @@ theatre-booking/
 
 ## Concurrency & Data Integrity
 
-Reservations use a **MariaDB transaction with row-level locks** (`FOR UPDATE`) to prevent double-booking:
+Reservations use a **MariaDB transaction with row-level locks** (`FOR UPDATE`) to prevent double-booking. The app reserves exact seats, so the lock is taken on the selected `seats` rows:
 
 ```
 BEGIN
-  SELECT available_seats ... FOR UPDATE   ← locks the row
-  CHECK available_seats >= requested
+  SELECT showtime ... FOR UPDATE          ← validates future showtime
+  SELECT selected seats ... FOR UPDATE    ← locks exact seat rows
+  CHECK each selected seat is available
   INSERT reservation
   INSERT reservation_items
-  UPDATE available_seats -= quantity
+  UPDATE seats SET status = 'reserved'
+  UPDATE seat_categories/showtimes counts
 COMMIT
 ```
 
 If any step fails, the transaction rolls back and no seats are deducted.
+
+The same pattern is used when editing a reservation: old seats are released inside the transaction, the newly selected seats are locked and checked, and the reservation totals are recalculated before commit.
 
 ---
 
@@ -249,6 +272,7 @@ If any step fails, the transaction rolls back and no seats are deducted.
 - Authentication via **JWT HS256** tokens (24h expiry)
 - Tokens stored in **device secure enclave** via `expo-secure-store`
 - All protected routes require `Authorization: Bearer <token>` header
+- Admin routes require `is_admin: true` inside the JWT
 - 401 responses automatically clear the token and redirect to login
 
 ---
@@ -262,3 +286,5 @@ If any step fails, the transaction rolls back and no seats are deducted.
 | Βασιλικό Θέατρο (Θεσσαλονίκη) | Οιδίπους Τύραννος |
 
 Seat categories per showtime: **VIP** (€28–40), **Κανονική** (€15–25), **Φοιτητική** (€8–15)
+
+The included showtimes are future-dated for the demo so bookings can be created, edited, and cancelled from the mobile app.
