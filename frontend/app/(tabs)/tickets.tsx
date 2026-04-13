@@ -8,6 +8,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../lib/api';
 import { keepRefreshVisible } from '../../lib/refresh';
+import RefreshSpinner from '../../components/RefreshSpinner';
 
 type ReservationItem = { category_name: string; quantity: number; unit_price: number };
 type Reservation = {
@@ -159,6 +160,7 @@ export default function TicketsScreen() {
 
   return (
     <View style={styles.container}>
+      <RefreshSpinner visible={refreshing} />
       <View style={styles.tabRow}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'upcoming' && styles.tabActive]}

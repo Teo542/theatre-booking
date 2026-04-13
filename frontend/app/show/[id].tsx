@@ -8,6 +8,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../lib/api';
 import { keepRefreshVisible } from '../../lib/refresh';
+import RefreshSpinner from '../../components/RefreshSpinner';
 
 type Show = {
   show_id: number;
@@ -88,19 +89,21 @@ export default function ShowDetailScreen() {
   const visibleShowtimes = selectedDate ? (grouped[selectedDate] || []) : [];
 
   return (
-    <ScrollView
-      style={styles.container}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={handleRefresh}
-          tintColor="#E5534B"
-          colors={['#E5534B']}
-          progressBackgroundColor="#1C1C2E"
-        />
-      }
-    >
+    <View style={styles.container}>
+      <RefreshSpinner visible={refreshing} />
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#E5534B"
+            colors={['#E5534B']}
+            progressBackgroundColor="#1C1C2E"
+          />
+        }
+      >
       {/* Hero */}
       <View style={styles.hero}>
         <View style={styles.heroGradient} />
@@ -193,8 +196,9 @@ export default function ShowDetailScreen() {
         </View>
       )}
 
-      <View style={{ height: 30 }} />
-    </ScrollView>
+        <View style={{ height: 30 }} />
+      </ScrollView>
+    </View>
   );
 }
 

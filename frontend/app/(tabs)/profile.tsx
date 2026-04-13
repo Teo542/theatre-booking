@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { clearToken, getUser } from '../../lib/auth';
 import api from '../../lib/api';
 import { keepRefreshVisible } from '../../lib/refresh';
+import RefreshSpinner from '../../components/RefreshSpinner';
 
 type User = { user_id: number; name: string; email: string };
 
@@ -56,19 +57,21 @@ export default function ProfileScreen() {
   const initial = user?.name?.charAt(0).toUpperCase() || '?';
 
   return (
-    <ScrollView
-      style={styles.container}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={handleRefresh}
-          tintColor="#E5534B"
-          colors={['#E5534B']}
-          progressBackgroundColor="#1C1C2E"
-        />
-      }
-    >
+    <View style={styles.container}>
+      <RefreshSpinner visible={refreshing} />
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#E5534B"
+            colors={['#E5534B']}
+            progressBackgroundColor="#1C1C2E"
+          />
+        }
+      >
 
       {/* Avatar & Name */}
       <View style={styles.heroSection}>
@@ -164,7 +167,8 @@ export default function ProfileScreen() {
       </View>
 
       <View style={{ height: 30 }} />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 

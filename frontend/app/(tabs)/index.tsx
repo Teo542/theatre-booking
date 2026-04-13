@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../lib/api';
 import { keepRefreshVisible } from '../../lib/refresh';
+import RefreshSpinner from '../../components/RefreshSpinner';
 
 type Show = {
   show_id: number;
@@ -109,6 +110,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0A0A1A" />
+      <RefreshSpinner visible={refreshing} />
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>

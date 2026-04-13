@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../lib/api';
 import { keepRefreshVisible } from '../../lib/refresh';
+import RefreshSpinner from '../../components/RefreshSpinner';
 
 type Category = {
   category_id: number;
@@ -179,6 +180,7 @@ export default function EditReservationScreen() {
 
   return (
     <View style={styles.container}>
+      <RefreshSpinner visible={refreshing} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: 120 + insets.bottom }]}
