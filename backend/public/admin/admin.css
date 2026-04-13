@@ -1,14 +1,15 @@
 :root {
-  --bg: #f4f6f8;
-  --panel: #ffffff;
-  --text: #17202a;
-  --muted: #607080;
-  --line: #d9e1e8;
-  --accent: #c83f3f;
-  --accent-dark: #9f3030;
-  --green: #177a4d;
-  --blue: #1f6fb2;
-  --yellow: #9b6b00;
+  --bg: #11131a;
+  --panel: #1b1f2a;
+  --panel-soft: #242a36;
+  --text: #f3f6fa;
+  --muted: #a9b4c2;
+  --line: #343c4b;
+  --accent: #d64a4a;
+  --accent-dark: #b83a3a;
+  --green: #37c785;
+  --blue: #54a9ff;
+  --yellow: #f4bf4f;
 }
 
 * {
@@ -38,17 +39,17 @@ body {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 28px;
-  box-shadow: 0 10px 30px rgba(23, 32, 42, 0.08);
+  padding: 32px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
 }
 
 .login-icon {
   font-size: 42px;
-  margin-bottom: 8px;
+  margin-bottom: 14px;
 }
 
 .login-title {
-  margin: 0 0 20px;
+  margin: 0 0 26px;
   font-size: 24px;
 }
 
@@ -188,9 +189,14 @@ body {
   gap: 12px;
 }
 
+#login-form {
+  display: grid;
+  gap: 16px;
+}
+
 .form-group {
   display: grid;
-  gap: 6px;
+  gap: 8px;
 }
 
 label {
@@ -207,8 +213,13 @@ textarea {
   border-radius: 6px;
   padding: 10px 11px;
   font: inherit;
-  background: #fff;
+  background: #111722;
   color: var(--text);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #778396;
 }
 
 textarea {
