@@ -259,9 +259,20 @@ textarea {
 }
 
 .btn-danger {
-  background: #fff0f0;
-  color: var(--accent-dark);
-  border: 1px solid #f0b8b8;
+  background: rgba(214, 74, 74, 0.12);
+  color: #ff9b9b;
+  border-color: rgba(214, 74, 74, 0.42);
+}
+
+.btn-danger:hover {
+  background: rgba(214, 74, 74, 0.22);
+  border-color: rgba(214, 74, 74, 0.72);
+  color: #ffd0d0;
+}
+
+.btn-danger:focus-visible {
+  outline: 3px solid rgba(214, 74, 74, 0.25);
+  outline-offset: 2px;
 }
 
 .btn-full {
