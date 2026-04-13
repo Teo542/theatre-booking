@@ -4,6 +4,7 @@ import {
   ActivityIndicator, Alert, ScrollView,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../lib/api';
 
@@ -15,44 +16,83 @@ type Category = {
   total_seats: number;
 };
 
-type CurrentItem = {
-  category_name: string;
-  quantity: number;
-  unit_price: number;
+type SeatState = 'available' | 'selected' | 'taken';
+
+type Seat = {
+  id: string;
+  row: string;
+  col: number;
+  state: SeatState;
+  categoryId: number;
 };
+
+const ROWS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+const COLS = 12;
+const AISLE_AFTER = 5;
+
+function buildSeatMap(categories: Category[], reserved: string[] = [], current: string[] = []): Seat[][] {
+  const reservedSet = new Set(reserved);
+  const currentSet = new Set(current);
+  const rowsPerCat: Record<number, string[]> = {};
+  let rowIdx = 0;
+
+  for (const cat of categories) {
+    const needed = Math.ceil(cat.total_seats / COLS);
+    rowsPerCat[cat.category_id] = ROWS.slice(rowIdx, rowIdx + needed);
+    rowIdx += needed;
+  }
+
+  return categories.flatMap((cat) =>
+    (rowsPerCat[cat.category_id] || []).map((row) =>
+      Array.from({ length: COLS }, (_, col) => {
+        const id = `${row}${col + 1}`;
+        const state: SeatState = currentSet.has(id)
+          ? 'selected'
+          : reservedSet.has(id)
+          ? 'taken'
+          : 'available';
+        return {
+          id,
+          row,
+          col: col + 1,
+          state,
+          categoryId: cat.category_id,
+        };
+      })
+    )
+  );
+}
 
 export default function EditReservationScreen() {
   const { id, showtimeId } = useLocalSearchParams<{ id: string; showtimeId: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [categories, setCategories] = useState<Category[]>([]);
-  const [currentItems, setCurrentItems] = useState<CurrentItem[]>([]);
-  const [quantities, setQuantities] = useState<Record<number, number>>({});
+  const [seatMap, setSeatMap] = useState<Seat[][]>([]);
+  const [selected, setSelected] = useState<Seat[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [id, showtimeId]);
 
   async function loadData() {
     try {
-      const [catsRes, resRes] = await Promise.all([
+      const [seatsRes, reservationsRes] = await Promise.all([
         api.get('/seats', { params: { showtimeId } }),
         api.get('/user/reservations'),
       ]);
 
-      const cats: Category[] = catsRes.data.categories;
-      const reservation = resRes.data.find((r: any) => String(r.reservation_id) === String(id));
-      const items: CurrentItem[] = reservation?.items || [];
+      const reservation = reservationsRes.data.find((r: any) => String(r.reservation_id) === String(id));
+      if (!reservation) throw new Error('Reservation not found');
 
-      // Build initial quantities from existing booking
-      const initial: Record<number, number> = {};
-      for (const cat of cats) {
-        const existing = items.find(i => i.category_name === cat.name);
-        initial[cat.category_id] = existing?.quantity || 0;
-      }
+      const cats: Category[] = seatsRes.data.categories;
+      const reserved: string[] = seatsRes.data.reserved || [];
+      const currentSeats: string[] = reservation.seats || [];
+      const map = buildSeatMap(cats, reserved, currentSeats);
 
       setCategories(cats);
-      setCurrentItems(items);
-      setQuantities(initial);
+      setSeatMap(map);
+      setSelected(map.flat().filter((seat) => seat.state === 'selected'));
     } catch {
       Alert.alert('Σφάλμα', 'Αδυναμία φόρτωσης δεδομένων');
     } finally {
@@ -60,42 +100,52 @@ export default function EditReservationScreen() {
     }
   }
 
-  function maxForCategory(cat: Category): number {
-    // Available seats + what the user already has booked in this category
-    const existing = currentItems.find(i => i.category_name === cat.name);
-    return cat.available_seats + (existing?.quantity || 0);
-  }
+  function toggleSeat(seat: Seat) {
+    if (seat.state === 'taken') return;
 
-  function adjust(categoryId: number, delta: number, max: number) {
-    setQuantities(prev => {
-      const next = Math.max(0, Math.min(max, (prev[categoryId] || 0) + delta));
-      return { ...prev, [categoryId]: next };
+    setSeatMap((prev) =>
+      prev.map((row) =>
+        row.map((s) => {
+          if (s.id !== seat.id) return s;
+          return { ...s, state: s.state === 'selected' ? 'available' : 'selected' };
+        })
+      )
+    );
+
+    setSelected((prev) => {
+      const exists = prev.find((s) => s.id === seat.id);
+      return exists ? prev.filter((s) => s.id !== seat.id) : [...prev, seat];
     });
   }
 
-  function totalSeats() {
-    return Object.values(quantities).reduce((s, q) => s + q, 0);
-  }
-
-  function totalPrice() {
-    return categories.reduce((sum, cat) => {
-      return sum + (quantities[cat.category_id] || 0) * parseFloat(cat.price);
+  function calcTotal() {
+    return selected.reduce((sum, seat) => {
+      const cat = categories.find((c) => c.category_id === seat.categoryId);
+      return sum + (cat ? parseFloat(cat.price) : 0);
     }, 0).toFixed(2);
   }
 
+  function getCategoryForRow(row: string): Category | undefined {
+    let rowIdx = 0;
+    for (const cat of categories) {
+      const needed = Math.ceil(cat.total_seats / COLS);
+      const catRows = ROWS.slice(rowIdx, rowIdx + needed);
+      if (catRows.includes(row)) return cat;
+      rowIdx += needed;
+    }
+  }
+
   async function handleSave() {
-    if (totalSeats() === 0) {
+    if (selected.length === 0) {
       Alert.alert('Σφάλμα', 'Επίλεξε τουλάχιστον μία θέση');
       return;
     }
 
-    const items = categories
-      .filter(cat => (quantities[cat.category_id] || 0) > 0)
-      .map(cat => ({ category_id: cat.category_id, quantity: quantities[cat.category_id] }));
-
     setSaving(true);
     try {
-      await api.put(`/reservations/${id}`, { items });
+      await api.put(`/reservations/${id}`, {
+        seat_ids: selected.map((seat) => seat.id),
+      });
       Alert.alert('Επιτυχία', 'Η κράτησή σου ενημερώθηκε', [
         { text: 'OK', onPress: () => router.back() },
       ]);
@@ -116,58 +166,96 @@ export default function EditReservationScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={styles.hint}>Άλλαξε τον αριθμό θέσεων ανά κατηγορία</Text>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scroll, { paddingBottom: 120 + insets.bottom }]}
+      >
+        <View style={styles.screenWrap}>
+          <View style={styles.screenBar} />
+          <Text style={styles.screenLabel}>ΣΚΗΝΗ</Text>
+        </View>
 
-        {categories.map(cat => {
-          const qty = quantities[cat.category_id] || 0;
-          const max = maxForCategory(cat);
-          const catColor = cat.name.toLowerCase().includes('vip')
-            ? '#F59E0B'
-            : cat.name.toLowerCase().includes('φοιτ') || cat.name.toLowerCase().includes('student')
-            ? '#10B981'
-            : '#E5534B';
+        <Text style={styles.hint}>Επίλεξε τις ακριβείς θέσεις που θέλεις να κρατήσεις</Text>
 
-          return (
-            <View key={cat.category_id} style={styles.categoryCard}>
-              <View style={[styles.categoryAccent, { backgroundColor: catColor }]} />
-              <View style={styles.categoryInfo}>
-                <Text style={styles.categoryName}>{cat.name}</Text>
-                <Text style={styles.categoryPrice}>€{parseFloat(cat.price).toFixed(2)} / θέση</Text>
-                <Text style={styles.categoryAvail}>{max} διαθέσιμες θέσεις</Text>
-              </View>
-              <View style={styles.stepper}>
-                <TouchableOpacity
-                  style={[styles.stepBtn, qty === 0 && styles.stepBtnDisabled]}
-                  onPress={() => adjust(cat.category_id, -1, max)}
-                  disabled={qty === 0}
-                >
-                  <Ionicons name="remove" size={18} color={qty === 0 ? '#2D2D3E' : '#fff'} />
-                </TouchableOpacity>
-                <Text style={styles.stepQty}>{qty}</Text>
-                <TouchableOpacity
-                  style={[styles.stepBtn, qty >= max && styles.stepBtnDisabled]}
-                  onPress={() => adjust(cat.category_id, +1, max)}
-                  disabled={qty >= max}
-                >
-                  <Ionicons name="add" size={18} color={qty >= max ? '#2D2D3E' : '#fff'} />
-                </TouchableOpacity>
-              </View>
+        <View style={styles.legend}>
+          {categories.map((cat) => (
+            <View key={cat.category_id} style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: getCatColor(cat.name) }]} />
+              <Text style={styles.legendText}>{cat.name} €{parseFloat(cat.price).toFixed(0)}</Text>
             </View>
-          );
-        })}
+          ))}
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#2D2D3E' }]} />
+            <Text style={styles.legendText}>Κρατημένη</Text>
+          </View>
+        </View>
+
+        <View style={styles.seatMapWrap}>
+          {seatMap.map((row, rowIdx) => {
+            const cat = getCategoryForRow(row[0]?.row);
+            return (
+              <View key={row[0]?.row || rowIdx}>
+                {cat && (rowIdx === 0 || getCategoryForRow(seatMap[rowIdx - 1]?.[0]?.row)?.category_id !== cat.category_id) && (
+                  <Text style={styles.catLabel}>{cat.name.toUpperCase()}</Text>
+                )}
+                <View style={styles.seatRow}>
+                  <Text style={styles.rowLabel}>{row[0]?.row}</Text>
+                  {row.map((seat, colIdx) => (
+                    <View key={seat.id} style={colIdx === AISLE_AFTER ? styles.aisleGap : undefined}>
+                      <TouchableOpacity
+                        style={[
+                          styles.seat,
+                          seat.state === 'available' && {
+                            backgroundColor: getCatColor(cat?.name || '') + '33',
+                            borderColor: getCatColor(cat?.name || ''),
+                          },
+                          seat.state === 'selected' && {
+                            backgroundColor: getCatColor(cat?.name || ''),
+                            borderColor: getCatColor(cat?.name || ''),
+                          },
+                          seat.state === 'taken' && styles.seatTaken,
+                        ]}
+                        onPress={() => toggleSeat(seat)}
+                        disabled={seat.state === 'taken'}
+                      >
+                        {seat.state === 'selected' && (
+                          <Ionicons name="checkmark" size={9} color="#fff" />
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  <Text style={styles.rowLabel}>{row[0]?.row}</Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+
+        <View style={styles.stateLegend}>
+          <View style={styles.legendItem}>
+            <View style={[styles.seatMini, { borderColor: '#E5534B', backgroundColor: '#E5534B33' }]} />
+            <Text style={styles.legendText}>Διαθέσιμη</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.seatMini, { backgroundColor: '#E5534B', borderColor: '#E5534B' }]} />
+            <Text style={styles.legendText}>Επιλεγμένη</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.seatMini, { backgroundColor: '#2D2D3E', borderColor: '#2D2D3E' }]} />
+            <Text style={styles.legendText}>Κρατημένη</Text>
+          </View>
+        </View>
       </ScrollView>
 
-      {/* Bottom Bar */}
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { paddingBottom: 16 + insets.bottom }]}>
         <View>
-          <Text style={styles.bottomLabel}>{totalSeats()} θέσεις</Text>
-          <Text style={styles.bottomTotal}>€{totalPrice()}</Text>
+          <Text style={styles.bottomLabel}>{selected.length} θέσεις επιλεγμένες</Text>
+          <Text style={styles.bottomTotal}>€{calcTotal()}</Text>
         </View>
         <TouchableOpacity
-          style={[styles.saveBtn, (saving || totalSeats() === 0) && styles.saveBtnDisabled]}
+          style={[styles.saveBtn, (saving || selected.length === 0) && styles.saveBtnDisabled]}
           onPress={handleSave}
-          disabled={saving || totalSeats() === 0}
+          disabled={saving || selected.length === 0}
         >
           {saving
             ? <ActivityIndicator color="#fff" size="small" />
@@ -179,30 +267,46 @@ export default function EditReservationScreen() {
   );
 }
 
+function getCatColor(name: string): string {
+  const n = name?.toLowerCase() || '';
+  if (n.includes('vip')) return '#F59E0B';
+  if (n.includes('φοιτ') || n.includes('student')) return '#10B981';
+  return '#E5534B';
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0A0A1A' },
   centered: { flex: 1, backgroundColor: '#0A0A1A', justifyContent: 'center', alignItems: 'center' },
-  scroll: { padding: 16, paddingBottom: 8 },
-  hint: { color: '#4B5563', fontSize: 13, marginBottom: 16 },
-  categoryCard: {
-    backgroundColor: '#1C1C2E', borderRadius: 14, marginBottom: 12,
-    flexDirection: 'row', alignItems: 'center', overflow: 'hidden',
+  scroll: { paddingTop: 16 },
+  screenWrap: { alignItems: 'center', marginTop: 4, marginBottom: 10 },
+  screenBar: {
+    width: '70%', height: 6, borderRadius: 3,
+    backgroundColor: '#E5534B', opacity: 0.8,
+    shadowColor: '#E5534B', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 12,
+    elevation: 8,
   },
-  categoryAccent: { width: 4, alignSelf: 'stretch' },
-  categoryInfo: { flex: 1, padding: 14 },
-  categoryName: { color: '#fff', fontSize: 15, fontWeight: '600', marginBottom: 4 },
-  categoryPrice: { color: '#9CA3AF', fontSize: 13, marginBottom: 2 },
-  categoryAvail: { color: '#4B5563', fontSize: 12 },
-  stepper: { flexDirection: 'row', alignItems: 'center', paddingRight: 14, gap: 12 },
-  stepBtn: {
-    width: 32, height: 32, borderRadius: 8,
-    backgroundColor: '#2D2D3E', justifyContent: 'center', alignItems: 'center',
+  screenLabel: { color: '#4B5563', fontSize: 11, letterSpacing: 4, marginTop: 6 },
+  hint: { color: '#9CA3AF', fontSize: 13, textAlign: 'center', paddingHorizontal: 20, marginBottom: 12 },
+  legend: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', gap: 12, marginVertical: 12, paddingHorizontal: 16 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  legendDot: { width: 12, height: 12, borderRadius: 3 },
+  legendText: { color: '#9CA3AF', fontSize: 11 },
+  seatMapWrap: { paddingHorizontal: 8, alignItems: 'center' },
+  catLabel: { color: '#4B5563', fontSize: 10, letterSpacing: 2, textAlign: 'center', marginTop: 10, marginBottom: 4 },
+  seatRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
+  rowLabel: { color: '#4B5563', fontSize: 10, width: 14, textAlign: 'center' },
+  seat: {
+    width: 22, height: 22, borderRadius: 4, margin: 2,
+    borderWidth: 1, justifyContent: 'center', alignItems: 'center',
+    borderColor: '#2D2D3E', backgroundColor: '#2D2D3E',
   },
-  stepBtnDisabled: { backgroundColor: '#1C1C2E' },
-  stepQty: { color: '#fff', fontSize: 18, fontWeight: 'bold', minWidth: 24, textAlign: 'center' },
+  seatTaken: { backgroundColor: '#1C1C2E', borderColor: '#1C1C2E' },
+  aisleGap: { marginLeft: 8 },
+  stateLegend: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginTop: 16 },
+  seatMini: { width: 16, height: 16, borderRadius: 3, borderWidth: 1 },
   bottomBar: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     backgroundColor: '#1C1C2E', padding: 16,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     borderTopWidth: 1, borderTopColor: '#2D2D3E',
   },
   bottomLabel: { color: '#9CA3AF', fontSize: 12, marginBottom: 2 },
