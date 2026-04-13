@@ -7,6 +7,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../lib/api';
+import { keepRefreshVisible } from '../../lib/refresh';
 
 type Show = {
   show_id: number;
@@ -58,8 +59,11 @@ export default function HomeScreen() {
 
   async function handleRefresh() {
     setRefreshing(true);
-    await fetchShows(search, activeFilter, false);
-    setRefreshing(false);
+    try {
+      await keepRefreshVisible(() => fetchShows(search, activeFilter, false));
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   function renderShowCard({ item, index }: { item: Show; index: number }) {

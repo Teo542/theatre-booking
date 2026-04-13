@@ -7,6 +7,7 @@ import {
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../lib/api';
+import { keepRefreshVisible } from '../../lib/refresh';
 
 type ReservationItem = { category_name: string; quantity: number; unit_price: number };
 type Reservation = {
@@ -44,8 +45,11 @@ export default function TicketsScreen() {
 
   async function handleRefresh() {
     setRefreshing(true);
-    await load(false);
-    setRefreshing(false);
+    try {
+      await keepRefreshVisible(() => load(false));
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   async function handleCancel(id: number) {

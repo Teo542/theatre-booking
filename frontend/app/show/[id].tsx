@@ -7,6 +7,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../lib/api';
+import { keepRefreshVisible } from '../../lib/refresh';
 
 type Show = {
   show_id: number;
@@ -72,8 +73,11 @@ export default function ShowDetailScreen() {
 
   async function handleRefresh() {
     setRefreshing(true);
-    await loadData(false);
-    setRefreshing(false);
+    try {
+      await keepRefreshVisible(() => loadData(false));
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   if (loading) return <View style={styles.centered}><ActivityIndicator color="#E5534B" size="large" /></View>;

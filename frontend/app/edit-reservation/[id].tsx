@@ -8,6 +8,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../lib/api';
+import { keepRefreshVisible } from '../../lib/refresh';
 
 type Category = {
   category_id: number;
@@ -105,8 +106,11 @@ export default function EditReservationScreen() {
 
   async function handleRefresh() {
     setRefreshing(true);
-    await loadData(false);
-    setRefreshing(false);
+    try {
+      await keepRefreshVisible(() => loadData(false));
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   function toggleSeat(seat: Seat) {

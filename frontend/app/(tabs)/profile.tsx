@@ -7,6 +7,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { clearToken, getUser } from '../../lib/auth';
 import api from '../../lib/api';
+import { keepRefreshVisible } from '../../lib/refresh';
 
 type User = { user_id: number; name: string; email: string };
 
@@ -34,8 +35,11 @@ export default function ProfileScreen() {
 
   async function handleRefresh() {
     setRefreshing(true);
-    await loadProfile();
-    setRefreshing(false);
+    try {
+      await keepRefreshVisible(loadProfile);
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   async function handleLogout() {
