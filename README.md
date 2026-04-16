@@ -59,14 +59,15 @@ A full-stack mobile application for booking theatre seats, built as a university
 ## Features
 
 - **Authentication** — Register and login with email/password. JWT stored securely on device via `expo-secure-store`. Auto-redirect on 401.
-- **Browse Shows** — List all theatre shows with search by show title, theatre name, or location. Filter by genre (Τραγωδία / Κωμωδία / Σύγχρονο / Αρχαίο) — genre pills call the API with a `?genre=` param, combined with search. Show poster cards with theatre name, location, duration.
-- **Show Detail** — Full show info, horizontal date picker strip, showtimes with availability indicators (available / almost full / sold out).
+- **Browse Shows** — List all theatre shows with search by show title, theatre name, or location. Filter by genre (Τραγωδία / Κωμωδία / Σύγχρονο / Αρχαίο) — genre pills call the API with a `?genre=` param, combined with search. Show poster cards with uploaded images, theatre name, location, duration.
+- **Show Detail** — Full show info, uploaded show image hero, horizontal date picker strip, showtimes with availability indicators (available / almost full / sold out).
 - **Seat Map** — Visual seat grid (rows A–L, 12 columns) with color-coded categories: 🟡 VIP, 🔴 Standard, 🟢 Student. Tap to select individual seats. Aisle gap at center.
 - **Booking** — Atomic reservation with DB transaction — locks the selected seat rows, checks availability, reserves the exact seats, and updates availability counts.
 - **Tickets tab** — Ticket-stub UI showing upcoming and past bookings. Cancel future reservations or edit them by selecting exact seats on the chair map.
 - **Profile tab** — User avatar, booking stats (total / upcoming / cancelled), account info, quick navigation shortcuts.
 - **Settings** — Accessible via gear icon in the profile header. Includes local notification/privacy toggles and account action placeholders for demonstration.
-- **Admin Panel** — Browser-based dashboard at `http://localhost:3000/admin/` for viewing stats, users, reservations, theatres, shows and showtimes.
+- **Pull to Refresh** — Data screens support mobile pull-to-refresh with a visible refresh spinner.
+- **Admin Panel** — Browser-based dashboard at `http://localhost:3000/admin/` for viewing stats, users, reservations, theatres, shows and showtimes. Admins can create shows, upload/change show pictures, and manage schedule data.
 
 ---
 
@@ -80,7 +81,7 @@ theatres
   theatre_id PK │ name │ location │ description
 
 shows
-  show_id PK │ theatre_id FK → theatres │ title │ description │ duration │ age_rating │ genre
+  show_id PK │ theatre_id FK → theatres │ title │ description │ duration │ age_rating │ genre │ image_url
 
 showtimes
   showtime_id PK │ show_id FK → shows │ date │ time │ hall │ total_seats │ available_seats
@@ -116,7 +117,18 @@ reservation_items
 | `DELETE` | `/reservations/:id` | ✅ | Cancel reservation |
 | `GET` | `/user/reservations` | ✅ | Current user's booking history |
 
-Admin endpoints are mounted under `/api/admin/*` and require an admin JWT. The seed data creates:
+Admin endpoints are mounted under `/api/admin/*` and require an admin JWT. Important admin actions include:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/admin/stats` | Dashboard totals |
+| `GET` | `/api/admin/shows` | List shows with reservation/revenue stats |
+| `POST` | `/api/admin/shows` | Create show; accepts multipart image upload in `image` |
+| `PUT` | `/api/admin/shows/:id` | Update show fields or upload/change show image |
+| `POST` | `/api/admin/showtimes` | Create showtime and generate seats/categories |
+| `DELETE` | `/api/admin/reservations/:id` | Admin cancellation |
+
+The seed data creates:
 
 | Email | Password |
 |-------|----------|
@@ -155,6 +167,12 @@ mysql -u root -p < database/seed.sql
 ```
 
 This creates the `theatre_booking` database with 3 theatres, 5 shows, 9 showtimes and sample seat categories.
+
+Existing databases are upgraded automatically on backend startup for the uploaded show image field (`shows.image_url`). The same change is also available as:
+
+```bash
+mysql -u root -p < database/migrations/001_add_show_image_url.sql
+```
 
 On Windows, if MariaDB is installed but not registered as a service, it can be started manually:
 
@@ -215,6 +233,7 @@ theatre-booking/
 │   │   └── db.js                        # mysql2 connection pool
 │   ├── app.js                           # Express app entry point
 │   ├── public/admin/                    # browser admin panel
+│   ├── public/uploads/                  # local uploaded show images (gitignored)
 │   ├── .env.example
 │   └── package.json
 │
@@ -234,12 +253,17 @@ theatre-booking/
 │   │   └── settings.tsx               # App settings (local/demo actions)
 │   ├── lib/
 │   │   ├── api.ts                       # Axios instance + JWT interceptor
-│   │   └── auth.ts                      # SecureStore token helpers
+│   │   ├── auth.ts                      # SecureStore token helpers
+│   │   ├── media.ts                     # converts backend media paths to URLs
+│   │   └── refresh.ts                   # pull-to-refresh timing helper
+│   ├── components/
+│   │   └── RefreshSpinner.tsx           # visible refresh indicator
 │   └── package.json
 │
 └── database/
-    ├── schema.sql                        # DDL — all tables
-    └── seed.sql                          # Sample data
+    ├── schema.sql                       # DDL — all tables
+    ├── seed.sql                         # Sample data
+    └── migrations/                      # incremental DB changes
 ```
 
 ---
@@ -274,6 +298,56 @@ The same pattern is used when editing a reservation: old seats are released insi
 - All protected routes require `Authorization: Bearer <token>` header
 - Admin routes require `is_admin: true` inside the JWT
 - 401 responses automatically clear the token and redirect to login
+
+---
+
+## Final Testing Checklist
+
+Use this checklist before submission and live Q&A.
+
+### Command checks
+
+```powershell
+cd backend
+node --check app.js
+node --check src\routes\admin.js
+node --check public\admin\admin.js
+
+cd ..\frontend
+npx tsc --noEmit
+```
+
+### Backend and database
+
+1. Start MariaDB.
+2. Start the backend with `npm start` from `backend/`.
+3. Confirm the console shows `Server running on http://localhost:3000`.
+4. Open `http://localhost:3000/admin/`.
+5. Login with `admin@example.com` / `Admin123!`.
+6. Create or update a show with a picture.
+7. Confirm the picture thumbnail appears in the admin shows table.
+
+### Mobile app
+
+1. Start Expo with `npx expo start` from `frontend/`.
+2. Scan the QR code with Expo Go.
+3. Register a new user or login.
+4. Browse shows and use search/genre filters.
+5. Pull down to refresh and confirm the refresh spinner appears.
+6. Open a show and confirm uploaded images display in the app.
+7. Select a showtime, choose exact seats, and create a booking.
+8. Open Tickets, edit the booking, and select different seats on the chair map.
+9. Cancel a future booking.
+10. Refresh Tickets/Profile and confirm the stats update.
+
+### Live demo flow
+
+1. Show the README architecture section.
+2. Show the backend running.
+3. Show the admin dashboard and upload/change a show image.
+4. Show the mobile app receiving that image.
+5. Book seats and explain the MariaDB transaction/row locking.
+6. Edit/cancel a booking and show the update in the admin panel.
 
 ---
 
