@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet,
+  View, Text, TouchableOpacity, StyleSheet, Image,
   ActivityIndicator, Alert, ScrollView,
   RefreshControl,
 } from 'react-native';
@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../../lib/api';
 import { keepRefreshVisible } from '../../lib/refresh';
 import RefreshSpinner from '../../components/RefreshSpinner';
+import { mediaUrl } from '../../lib/media';
 
 type Show = {
   show_id: number;
@@ -18,6 +19,7 @@ type Show = {
   age_rating: string;
   theatre_name: string;
   location: string;
+  image_url?: string | null;
 };
 
 type Showtime = {
@@ -87,6 +89,7 @@ export default function ShowDetailScreen() {
   const grouped = groupByDate(showtimes);
   const dates = Object.keys(grouped).sort();
   const visibleShowtimes = selectedDate ? (grouped[selectedDate] || []) : [];
+  const heroUri = mediaUrl(show.image_url);
 
   return (
     <View style={styles.container}>
@@ -106,6 +109,7 @@ export default function ShowDetailScreen() {
       >
       {/* Hero */}
       <View style={styles.hero}>
+        {heroUri && <Image source={{ uri: heroUri }} style={styles.heroImage} resizeMode="cover" />}
         <View style={styles.heroGradient} />
         <Text style={styles.heroEmoji}>🎭</Text>
         <View style={styles.heroOverlay}>
@@ -211,9 +215,15 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end', alignItems: 'center',
     position: 'relative', overflow: 'hidden',
   },
+  heroImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+    zIndex: 1,
+  },
   heroGradient: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#7C3AED', opacity: 0.3,
+    backgroundColor: '#7C3AED', opacity: 0.3, zIndex: 2,
   },
   heroEmoji: {
     position: 'absolute', top: 30, fontSize: 80, opacity: 0.25,
@@ -221,6 +231,7 @@ const styles = StyleSheet.create({
   heroOverlay: {
     width: '100%', padding: 16,
     backgroundColor: 'rgba(0,0,0,0.6)',
+    zIndex: 3,
   },
   ratingBadge: {
     backgroundColor: '#E5534B', alignSelf: 'flex-start',

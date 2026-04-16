@@ -291,6 +291,35 @@ textarea {
   overflow-x: auto;
 }
 
+.row-actions {
+  display: grid;
+  gap: 8px;
+  min-width: 150px;
+}
+
+.show-thumb {
+  width: 76px;
+  height: 92px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #111722;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  text-align: center;
+}
+
+.show-thumb.empty {
+  padding: 8px;
+}
+
+.show-image-input {
+  max-width: 190px;
+  padding: 8px;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;

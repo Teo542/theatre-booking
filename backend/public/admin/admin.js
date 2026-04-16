@@ -52,13 +52,16 @@ function toast(message, type = 'ok') {
 }
 
 async function api(path, options = {}) {
+  const isFormData = options.body instanceof FormData;
+  const headers = {
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+    ...(state.token ? { Authorization: `Bearer ${state.token}` } : {}),
+    ...(options.headers || {}),
+  };
+
   const response = await fetch(path, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(state.token ? { Authorization: `Bearer ${state.token}` } : {}),
-      ...(options.headers || {}),
-    },
+    headers,
   });
 
   const text = await response.text();
@@ -194,6 +197,18 @@ function simpleList(items, render) {
   return `<table><tbody>${items.map((item) => `<tr><td>${escapeHtml(render(item))}</td></tr>`).join('')}</tbody></table>`;
 }
 
+function imageSrc(value) {
+  if (!value) return '';
+  if (/^https?:\/\//i.test(value)) return value;
+  return value.startsWith('/') ? value : `/${value}`;
+}
+
+function showThumb(show) {
+  const src = imageSrc(show.image_url);
+  if (!src) return '<div class="show-thumb empty">No image</div>';
+  return `<img class="show-thumb" src="${escapeHtml(src)}" alt="${escapeHtml(show.title)}" />`;
+}
+
 async function renderShows() {
   const [shows, theatres] = await Promise.all([
     api('/api/admin/shows'),
@@ -210,22 +225,30 @@ async function renderShows() {
         ${inputField('duration', 'Διάρκεια λεπτά', 'number')}
         ${inputField('age_rating', 'Ηλικιακή σήμανση', 'text', '12+')}
         ${inputField('genre', 'Είδος', 'text', 'Τραγωδία')}
+        ${fileField('image', 'Picture')}
         <button class="btn btn-primary">Δημιουργία</button>
       </form>
       <div class="card">
         <h3 class="section-title">Παραστάσεις</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Τίτλος</th><th>Θέατρο</th><th>Είδος</th><th>Κρατήσεις</th><th>Έσοδα</th><th></th></tr></thead>
+            <thead><tr><th>Picture</th><th>Τίτλος</th><th>Θέατρο</th><th>Είδος</th><th>Κρατήσεις</th><th>Έσοδα</th><th></th></tr></thead>
             <tbody>
               ${shows.map((show) => `
                 <tr>
+                  <td>${showThumb(show)}</td>
                   <td>${escapeHtml(show.title)}</td>
                   <td>${escapeHtml(show.theatre_name)}</td>
                   <td>${escapeHtml(show.genre || '-')}</td>
                   <td>${show.reservation_count}</td>
                   <td>${money(show.revenue)}</td>
-                  <td><button class="btn btn-danger" data-action="delete-show" data-id="${show.show_id}">Διαγραφή</button></td>
+                  <td>
+                    <div class="row-actions">
+                      <input class="show-image-input" id="show-image-${show.show_id}" type="file" accept="image/*" />
+                      <button class="btn btn-primary" type="button" data-action="upload-show-image" data-id="${show.show_id}">Upload</button>
+                      <button class="btn btn-danger" type="button" data-action="delete-show" data-id="${show.show_id}">Διαγραφή</button>
+                    </div>
+                  </td>
                 </tr>
               `).join('')}
             </tbody>
@@ -399,15 +422,26 @@ function selectField(name, label, options) {
   `;
 }
 
+function fileField(name, label) {
+  return `
+    <div class="form-group">
+      <label for="${name}">${label}</label>
+      <input id="${name}" name="${name}" type="file" accept="image/*" />
+    </div>
+  `;
+}
+
 function formData(form) {
   return Object.fromEntries(new FormData(form).entries());
 }
 
 async function handleCreateShow(event) {
   event.preventDefault();
-  const data = formData(event.currentTarget);
-  data.theatre_id = Number(data.theatre_id);
-  data.duration = Number(data.duration);
+  const data = new FormData(event.currentTarget);
+  data.set('theatre_id', String(Number(data.get('theatre_id'))));
+  data.set('duration', String(Number(data.get('duration'))));
+  const image = data.get('image');
+  if (image instanceof File && !image.name) data.delete('image');
   await submit('/api/admin/shows', data, 'Η παράσταση δημιουργήθηκε');
 }
 
@@ -428,7 +462,8 @@ async function handleCreateShowtime(event) {
 async function submit(path, data, message) {
   try {
     showLoading(true);
-    await api(path, { method: 'POST', body: JSON.stringify(data) });
+    const body = data instanceof FormData ? data : JSON.stringify(data);
+    await api(path, { method: 'POST', body });
     toast(message);
     renderView(state.view);
   } catch (err) {
@@ -444,6 +479,12 @@ main.addEventListener('click', async (event) => {
 
   const action = button.dataset.action;
   const id = button.dataset.id;
+
+  if (action === 'upload-show-image') {
+    await handleUploadShowImage(id);
+    return;
+  }
+
   const confirmText = {
     'delete-show': 'Να διαγραφεί αυτή η παράσταση;',
     'delete-theatre': 'Να διαγραφεί αυτό το θέατρο;',
@@ -471,6 +512,29 @@ main.addEventListener('click', async (event) => {
     showLoading(false);
   }
 });
+
+async function handleUploadShowImage(id) {
+  const input = document.getElementById(`show-image-${id}`);
+  const file = input?.files?.[0];
+  if (!file) {
+    toast('Choose an image first', 'error');
+    return;
+  }
+
+  const data = new FormData();
+  data.append('image', file);
+
+  try {
+    showLoading(true);
+    await api(`/api/admin/shows/${id}`, { method: 'PUT', body: data });
+    toast('Picture uploaded');
+    renderView(state.view);
+  } catch (err) {
+    toast(err.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+}
 
 if (state.token && state.user?.is_admin) {
   showApp();

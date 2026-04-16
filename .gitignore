@@ -10,6 +10,10 @@ dist/
 .expo/
 *.expo/
 
+# Uploaded local media
+backend/public/uploads/*
+!backend/public/uploads/.gitkeep
+
 # OS
 .DS_Store
 Thumbs.db

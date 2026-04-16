@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import Constants from 'expo-constants';
 
 const debuggerHost = Constants.expoConfig?.hostUri?.split(':')[0];
-const API_BASE = debuggerHost
+export const API_BASE = debuggerHost
   ? `http://${debuggerHost}:3000`
   : 'http://localhost:3000';
 

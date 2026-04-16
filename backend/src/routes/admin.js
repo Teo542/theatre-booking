@@ -1,9 +1,42 @@
 const router = require('express').Router();
 const adminAuth = require('../middleware/adminAuth');
 const db = require('../db');
+const fs = require('fs');
+const multer = require('multer');
+const path = require('path');
 
 const SEAT_ROWS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 const SEAT_COLS = 12;
+const SHOW_UPLOAD_DIR = path.join(__dirname, '..', '..', 'public', 'uploads', 'shows');
+
+fs.mkdirSync(SHOW_UPLOAD_DIR, { recursive: true });
+
+const imageUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, SHOW_UPLOAD_DIR),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      const safeBase = path.basename(file.originalname, ext)
+        .replace(/[^a-z0-9]+/gi, '-')
+        .replace(/^-+|-+$/g, '')
+        .toLowerCase()
+        .slice(0, 40) || 'show';
+      cb(null, `${Date.now()}-${safeBase}${ext}`);
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+    if (!allowedTypes.has(file.mimetype)) {
+      return cb(new Error('Only JPG, PNG, WebP, or GIF images are allowed'));
+    }
+    cb(null, true);
+  },
+});
+
+function showImageUrl(file) {
+  return file ? `/uploads/shows/${file.filename}` : null;
+}
 
 router.use(adminAuth);
 
@@ -44,7 +77,7 @@ router.get('/shows', async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT
-        s.show_id, s.title, s.description, s.duration, s.age_rating, s.genre,
+        s.show_id, s.title, s.description, s.duration, s.age_rating, s.genre, s.image_url,
         s.theatre_id,
         t.name AS theatre_name,
         COUNT(DISTINCT r.reservation_id) AS reservation_count,
@@ -64,15 +97,16 @@ router.get('/shows', async (req, res) => {
 });
 
 // POST /api/admin/shows
-router.post('/shows', async (req, res) => {
+router.post('/shows', imageUpload.single('image'), async (req, res) => {
   const { theatre_id, title, description, duration, age_rating, genre } = req.body;
   if (!theatre_id || !title || !duration) {
     return res.status(400).json({ error: 'theatre_id, title and duration are required' });
   }
   try {
+    const image_url = showImageUrl(req.file);
     const [result] = await db.query(
-      'INSERT INTO shows (theatre_id, title, description, duration, age_rating, genre) VALUES (?, ?, ?, ?, ?, ?)',
-      [theatre_id, title, description || null, duration, age_rating || null, genre || null]
+      'INSERT INTO shows (theatre_id, title, description, duration, age_rating, genre, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [theatre_id, title, description || null, duration, age_rating || null, genre || null, image_url]
     );
     res.status(201).json({ show_id: result.insertId, message: 'Show created' });
   } catch (err) {
@@ -81,9 +115,9 @@ router.post('/shows', async (req, res) => {
 });
 
 // PUT /api/admin/shows/:id
-router.put('/shows/:id', async (req, res) => {
+router.put('/shows/:id', imageUpload.single('image'), async (req, res) => {
   const { id } = req.params;
-  const { theatre_id, title, description, duration, age_rating, genre } = req.body;
+  const { theatre_id, title, description, duration, age_rating, genre, clear_image } = req.body;
   const fields = [];
   const values = [];
   if (theatre_id !== undefined) { fields.push('theatre_id = ?'); values.push(theatre_id); }
@@ -92,6 +126,8 @@ router.put('/shows/:id', async (req, res) => {
   if (duration !== undefined) { fields.push('duration = ?'); values.push(duration); }
   if (age_rating !== undefined) { fields.push('age_rating = ?'); values.push(age_rating); }
   if (genre !== undefined) { fields.push('genre = ?'); values.push(genre); }
+  if (req.file) { fields.push('image_url = ?'); values.push(showImageUrl(req.file)); }
+  if (clear_image === 'true') { fields.push('image_url = ?'); values.push(null); }
   if (fields.length === 0) return res.status(400).json({ error: 'No fields to update' });
   values.push(id);
   try {

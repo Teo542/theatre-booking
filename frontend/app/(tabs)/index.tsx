@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  View, Text, FlatList, TextInput, TouchableOpacity,
+  View, Text, FlatList, TextInput, TouchableOpacity, Image,
   StyleSheet, ActivityIndicator, ScrollView, StatusBar,
   RefreshControl,
 } from 'react-native';
@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../../lib/api';
 import { keepRefreshVisible } from '../../lib/refresh';
 import RefreshSpinner from '../../components/RefreshSpinner';
+import { mediaUrl } from '../../lib/media';
 
 type Show = {
   show_id: number;
@@ -18,6 +19,7 @@ type Show = {
   age_rating: string;
   theatre_name: string;
   location: string;
+  image_url?: string | null;
 };
 
 const GENRE_FILTERS = ['Όλα', 'Τραγωδία', 'Κωμωδία', 'Σύγχρονο', 'Αρχαίο'];
@@ -69,6 +71,7 @@ export default function HomeScreen() {
 
   function renderShowCard({ item, index }: { item: Show; index: number }) {
     const colors = SHOW_COLORS[index % SHOW_COLORS.length];
+    const posterUri = mediaUrl(item.image_url);
     return (
       <TouchableOpacity
         style={styles.card}
@@ -76,6 +79,7 @@ export default function HomeScreen() {
         onPress={() => router.push(`/show/${item.show_id}`)}
       >
         <View style={[styles.cardPoster, { backgroundColor: colors[0] }]}>
+          {posterUri && <Image source={{ uri: posterUri }} style={styles.cardPosterImage} resizeMode="cover" />}
           <View style={[styles.cardPosterAccent, { backgroundColor: colors[1] }]} />
           <Text style={styles.cardPosterEmoji}>🎭</Text>
           <View style={styles.cardPosterBadge}>
@@ -209,6 +213,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
     position: 'relative', overflow: 'hidden',
   },
+  cardPosterImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+    zIndex: 2,
+  },
   cardPosterAccent: {
     position: 'absolute', bottom: -20, right: -20,
     width: 80, height: 80, borderRadius: 40, opacity: 0.5,
@@ -218,6 +228,7 @@ const styles = StyleSheet.create({
     position: 'absolute', top: 8, right: 8,
     backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 4,
     paddingHorizontal: 5, paddingVertical: 2,
+    zIndex: 3,
   },
   cardPosterBadgeText: { color: '#fff', fontSize: 9, fontWeight: 'bold' },
   cardBody: { flex: 1, padding: 12, justifyContent: 'space-between' },

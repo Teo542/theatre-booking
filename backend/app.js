@@ -1,11 +1,19 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
 const path = require('path');
 const db = require('./src/db');
 
 const SEAT_ROWS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 const SEAT_COLS = 12;
+const UPLOAD_DIR = path.join(__dirname, 'public', 'uploads', 'shows');
+
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+async function ensureSchema() {
+  await db.query("ALTER TABLE shows ADD COLUMN IF NOT EXISTS image_url VARCHAR(500) NULL AFTER genre");
+}
 
 async function populateSeats() {
   const [unpopulated] = await db.query(`
@@ -55,6 +63,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use('/admin', express.static(path.join(__dirname, 'public', 'admin')));
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 
 // Auth (POST /register, POST /login)
 app.use('/', authRoutes);
@@ -76,5 +85,6 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  try { await ensureSchema(); } catch (e) { console.error('Schema update error:', e.message); }
   try { await populateSeats(); } catch (e) { console.error('Seat population error:', e.message); }
 });
