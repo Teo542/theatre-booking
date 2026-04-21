@@ -56,6 +56,41 @@ A full-stack mobile application for booking theatre seats, built as a university
 
 ---
 
+## Tools Used
+
+### Development Tools
+- Git and GitHub for version control and repository hosting.
+- PowerShell for local development commands on Windows.
+- npm for dependency installation and project scripts.
+- Expo Go for running and testing the mobile app on a physical phone.
+
+### Frontend Tools
+- React Native with Expo SDK 54 for the mobile application.
+- expo-router for file-based navigation.
+- expo-secure-store for secure JWT storage on the device.
+- Axios for API calls to the backend.
+- TypeScript for frontend type checking.
+
+### Backend and Database Tools
+- Node.js and Express for the REST API.
+- MariaDB 12.2 for relational data storage.
+- mysql2 for the MariaDB connection pool.
+- JSON Web Tokens (`jsonwebtoken`) for authentication.
+- bcryptjs for password hashing.
+- multer for admin show image uploads.
+
+### Verification Tools
+- `node --check` for backend JavaScript syntax checks.
+- `npx tsc --noEmit` for TypeScript validation.
+- `npx expo install --check` for Expo package compatibility checks.
+
+### Development Assistance
+- Codex was used for coding support, debugging, Git checks, README edits, and final testing preparation.
+- Claude Code / T3 Code-style checkpoint tooling appears in local development refs under `refs/t3/checkpoints/...`, mainly as intermediate local snapshots and QA/checkpoint history.
+- The submitted `master` branch commits are authored by `Teo542`.
+
+---
+
 ## Features
 
 - **Authentication** — Register and login with email/password. JWT stored securely on device via `expo-secure-store`. Auto-redirect on 401.
