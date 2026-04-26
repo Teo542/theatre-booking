@@ -2,14 +2,18 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../db');
 
+const PASSWORD_RULE_MESSAGE =
+  'Password must be at least 8 characters and include uppercase, lowercase, number, and special character';
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+
 async function register(req, res) {
   const { name, email, password } = req.body;
 
   if (!name || !email || !password) {
     return res.status(400).json({ error: 'name, email and password are required' });
   }
-  if (password.length < 6) {
-    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  if (!PASSWORD_REGEX.test(password)) {
+    return res.status(400).json({ error: PASSWORD_RULE_MESSAGE });
   }
 
   const [existing] = await db.query('SELECT user_id FROM users WHERE email = ?', [email]);

@@ -8,6 +8,10 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../../lib/api';
 import { setToken, setUser } from '../../lib/auth';
 
+const PASSWORD_RULE_MESSAGE =
+  'Password must be 8+ characters with uppercase, lowercase, number, and symbol like ! > ? :';
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+
 export default function RegisterScreen() {
   const router = useRouter();
   const [name, setName] = useState('');
@@ -18,7 +22,11 @@ export default function RegisterScreen() {
 
   async function handleRegister() {
     if (!name || !email || !password) {
-      Alert.alert('Σφάλμα', 'Συμπλήρωσε όλα τα πεδία');
+      Alert.alert('Error', 'Fill in all fields');
+      return;
+    }
+    if (!PASSWORD_REGEX.test(password)) {
+      Alert.alert('Error', PASSWORD_RULE_MESSAGE);
       return;
     }
     setLoading(true);
@@ -28,7 +36,7 @@ export default function RegisterScreen() {
       await setUser(data.user);
       router.replace('/(tabs)');
     } catch (err: any) {
-      Alert.alert('Σφάλμα εγγραφής', err.response?.data?.error || 'Αποτυχία εγγραφής');
+      Alert.alert('Registration failed', err.response?.data?.error || 'Could not create account');
     } finally {
       setLoading(false);
     }
@@ -37,72 +45,76 @@ export default function RegisterScreen() {
   return (
     <KeyboardAvoidingView behavior="padding" style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-
-      <View style={styles.logoWrap}>
-        <Text style={styles.logoEmoji}>🎭</Text>
-        <Text style={styles.logoTitle}>TheatreBooking</Text>
-      </View>
-
-      <View style={styles.form}>
-        <Text style={styles.formTitle}>Δημιουργία Λογαριασμού</Text>
-
-        <View style={styles.inputWrap}>
-          <Ionicons name="person-outline" size={18} color="#4B5563" style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Ονοματεπώνυμο"
-            placeholderTextColor="#4B5563"
-            value={name}
-            onChangeText={setName}
-          />
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.logoWrap}>
+          <Text style={styles.logoEmoji}>Theatre</Text>
+          <Text style={styles.logoTitle}>TheatreBooking</Text>
         </View>
 
-        <View style={styles.inputWrap}>
-          <Ionicons name="mail-outline" size={18} color="#4B5563" style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#4B5563"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
-        </View>
+        <View style={styles.form}>
+          <Text style={styles.formTitle}>Create Account</Text>
 
-        <View style={styles.inputWrap}>
-          <Ionicons name="lock-closed-outline" size={18} color="#4B5563" style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Κωδικός (τουλάχιστον 6 χαρακτήρες)"
-            placeholderTextColor="#4B5563"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPw}
-          />
-          <TouchableOpacity onPress={() => setShowPw(!showPw)} style={styles.eyeBtn}>
-            <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={18} color="#4B5563" />
+          <View style={styles.inputWrap}>
+            <Ionicons name="person-outline" size={18} color="#4B5563" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Full name"
+              placeholderTextColor="#4B5563"
+              value={name}
+              onChangeText={setName}
+            />
+          </View>
+
+          <View style={styles.inputWrap}>
+            <Ionicons name="mail-outline" size={18} color="#4B5563" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor="#4B5563"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+          </View>
+
+          <View style={styles.inputWrap}>
+            <Ionicons name="lock-closed-outline" size={18} color="#4B5563" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Password (8+, Aa, 0-9, ! > ? :)"
+              placeholderTextColor="#4B5563"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPw}
+            />
+            <TouchableOpacity onPress={() => setShowPw(!showPw)} style={styles.eyeBtn}>
+              <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={18} color="#4B5563" />
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={loading}>
+            <Text style={styles.buttonText}>{loading ? 'Creating account...' : 'Create Account'}</Text>
+            {!loading && <Ionicons name="arrow-forward" size={18} color="#fff" />}
           </TouchableOpacity>
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <Link href="/(auth)/login" asChild>
+            <TouchableOpacity style={styles.secondaryBtn}>
+              <Text style={styles.secondaryText}>Already have an account? Sign in</Text>
+            </TouchableOpacity>
+          </Link>
         </View>
-
-        <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={loading}>
-          <Text style={styles.buttonText}>{loading ? 'Εγγραφή...' : 'Δημιουργία Λογαριασμού'}</Text>
-          {!loading && <Ionicons name="arrow-forward" size={18} color="#fff" />}
-        </TouchableOpacity>
-
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>ή</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <Link href="/(auth)/login" asChild>
-          <TouchableOpacity style={styles.secondaryBtn}>
-            <Text style={styles.secondaryText}>Έχεις ήδη λογαριασμό; Σύνδεση</Text>
-          </TouchableOpacity>
-        </Link>
-      </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -113,7 +125,7 @@ const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: '#0A0A1A' },
   scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 24 },
   logoWrap: { alignItems: 'center', marginBottom: 28 },
-  logoEmoji: { fontSize: 48, marginBottom: 8 },
+  logoEmoji: { fontSize: 24, marginBottom: 8, color: '#fff', fontWeight: '700' },
   logoTitle: { color: '#fff', fontSize: 24, fontWeight: 'bold', letterSpacing: 1 },
   form: { backgroundColor: '#1C1C2E', borderRadius: 20, padding: 24 },
   formTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 20 },
